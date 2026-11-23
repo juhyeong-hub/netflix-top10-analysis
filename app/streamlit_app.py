@@ -15,56 +15,86 @@ st.set_page_config(page_title="Netflix Top 10 글로벌 확산 분석", page_ico
 # ---- Netflix 테마 ----
 st.markdown("""
 <style>
-/* ===== Netflix 다크 테마 ===== */
-section[data-testid="stSidebar"] {
-    background-color: #141414;
-    border-right: 1px solid #232323;
-}
+/* ===== Netflix 다크 테마 (클라우드 강제 적용) ===== */
+
+/* 1. 배경 전면 다크 */
+section[data-testid="stSidebar"] { background-color: #141414 !important; }
 section[data-testid="stSidebar"] * { color: #e5e5e5 !important; }
-header[data-testid="stHeader"] { background: rgba(0,0,0,0); }
-div[data-testid="stAppViewContainer"] { background-color: #0b0b0b; }
-div.block-container { padding-top: 1.6rem; }
+header[data-testid="stHeader"] { background-color: #0b0b0b !important; }
+div[data-testid="stAppViewContainer"] { background-color: #0b0b0b !important; }
+div[data-testid="stAppViewContainer"] section[data-testid="stMain"],
+div[data-testid="stAppViewContainer"] section[data-testid="stMain"] div.block-container {
+    background-color: #0b0b0b !important;
+}
+body { background-color: #0b0b0b !important; color: #ffffff !important; }
 
-/* ===== 텍스트 ===== */
+/* 2. 텍스트 전면 흰색 (최우선) */
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] *,
+[data-testid="stHeader"], [data-testid="stHeader"] *,
+.stMarkdown p, .stMarkdown span, .stMarkdown div,
+label, p, span, td, th, li, code {
+    color: #ffffff !important;
+}
 h1 { color: #e50914 !important; font-weight: 800 !important; }
-h2 { color: #e5e5e5 !important; border-left: 4px solid #e50914; padding-left: 10px; }
-h3, h4 { color: #e5e5e5 !important; }
-.stMarkdown p, li, td, th { color: #e5e5e5 !important; }
+h2, h3, h4 { color: #e5e5e5 !important; }
+h2 { border-left: 4px solid #e50914; padding-left: 10px; }
 
-/* ===== 메트릭 카드 ===== */
+/* 3. 캡션 */
+div[data-testid="stCaption"], div[data-testid="stCaption"] p {
+    color: #b3b3b3 !important;
+}
+
+/* 4. 메트릭 카드 */
 .stMetric {
     background-color: #141414 !important;
-    border: 1px solid #232323;
-    border-left: 3px solid #e50914;
-    border-radius: 10px; padding: 14px;
+    border: 1px solid #232323 !important;
+    border-left: 3px solid #e50914 !important;
+    border-radius: 10px !important; padding: 14px !important;
 }
 div[data-testid="stMetricValue"] { color: #e50914 !important; font-weight: 700 !important; }
 div[data-testid="stMetric"] label { color: #b3b3b3 !important; }
 
-/* ===== 탭 ===== */
+/* 5. 탭 */
 div[data-testid="stTabs"] [role="tablist"] { gap: 6px; }
 div[data-testid="stTabs"] [role="tab"] {
-    background: #141414; color: #e5e5e5 !important;
-    border-radius: 8px 8px 0 0; border: 1px solid #232323;
-    border-bottom: none; padding: 8px 18px; font-weight: 600;
+    background: #141414 !important; color: #e5e5e5 !important;
+    border-radius: 8px 8px 0 0 !important; border: 1px solid #232323 !important;
+    border-bottom: none !important; padding: 8px 18px !important; font-weight: 600 !important;
 }
 div[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    background: #e50914; color: white !important; border-color: #e50914;
-    box-shadow: 0 2px 8px rgba(229,9,20,0.3);
+    background: #e50914 !important; color: white !important; border-color: #e50914 !important;
+    box-shadow: 0 2px 8px rgba(229,9,20,0.3) !important;
 }
 div[data-testid="stTabs"] [role="tabpanel"] { color: #ffffff !important; }
 
-/* ===== 데이터프레임 ===== */
-div[data-testid="stDataFrame"] { background-color: #141414 !important; border: 1px solid #232323; border-radius: 8px; }
+/* 6. 데이터프레임 (표) */
+div[data-testid="stDataFrame"] {
+    background-color: #141414 !important;
+    border: 1px solid #232323 !important; border-radius: 8px !important;
+}
 div[data-testid="stDataFrame"] * { color: #ffffff !important; }
+div[data-testid="stDataFrame"] thead th {
+    background-color: #1f1f1f !important; color: #e50914 !important;
+    border-bottom: 2px solid #e50914 !important;
+}
+div[data-testid="stDataFrame"] tbody td {
+    background-color: #141414 !important; color: #ffffff !important;
+    border-bottom: 1px solid #232323 !important;
+}
+div[data-testid="stDataFrame"] tbody tr:hover td {
+    background-color: #232323 !important;
+}
 
-/* ===== 위젯 ===== */
+/* 7. 위젯 */
 div[data-baseweb="select"] > div {
     background-color: #141414 !important; color: #ffffff !important;
-    border-color: #333 !important;
+    border-color: #444 !important;
 }
 div[data-baseweb="select"] span { color: #ffffff !important; }
-div[data-baseweb="popover"] * { color: #ffffff !important; background-color: #141414 !important; }
+div[data-baseweb="popover"] * {
+    color: #ffffff !important; background-color: #141414 !important;
+}
 div[role="radiogroup"] label, label[data-testid="stCheckbox"] span {
     color: #ffffff !important;
 }
@@ -72,38 +102,39 @@ div[data-testid="stSlider"] { color: #ffffff !important; }
 div[data-testid="stSlider"] [data-testid="stThumbContainer"] {
     background-color: #e50914 !important;
 }
-div[data-testid="stSlider"] [role="slider"] {
-    color: #e50914 !important;
-}
+div[data-testid="stSlider"] [role="slider"] { color: #e50914 !important; }
 
-/* ===== 경고/정보/성공 박스 ===== */
+/* 8. 경고/정보/성공 박스 */
 div[data-testid="stAlert"] {
     background-color: #141414 !important;
-    border: 1px solid #333; border-radius: 8px;
+    border: 1px solid #444 !important; border-radius: 8px !important;
 }
 div[data-testid="stAlert"] * { color: #ffffff !important; }
 div[data-testid="stExpander"] {
     background-color: #141414 !important;
-    border: 1px solid #232323; border-radius: 8px;
+    border: 1px solid #232323 !important; border-radius: 8px !important;
 }
+div[data-testid="stExpander"] * { color: #ffffff !important; }
 
-/* ===== 프로그레스 바 ===== */
+/* 9. 프로그레스 바 */
 div[data-testid="stProgress"] > div > div > div {
     background-color: #e50914 !important;
 }
 
-/* ===== 캡션 ===== */
-div[data-testid="stCaption"], div[data-testid="stCaption"] p {
-    color: #b3b3b3 !important;
+/* 10. 버튼 */
+.stButton button {
+    background-color: #e50914 !important; color: white !important;
+    border: none !important; border-radius: 6px !important;
 }
 
-/* ===== 사이드바 구분선 ===== */
-section[data-testid="stSidebar"] hr { border-color: #333; }
-
-/* ===== 스크롤바 ===== */
+/* 11. 스크롤바 */
 ::-webkit-scrollbar { width: 6px; background: #141414; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #e50914; }
+
+/* 12. 차트 배경 (Altair/Plotly) */
+div[data-testid="stArrow"] { background-color: transparent !important; }
+div[data-testid="stVegaChart"] path[fill] { fill-opacity: 1; }
 </style>
 """, unsafe_allow_html=True)
 
