@@ -1,0 +1,52 @@
+﻿from대륙,to대륙,순위,show_title,확산유사도점수,from진입국가수
+아시아,유럽,1,Green Snake,0.136,12
+아시아,유럽,2,The Whole Truth,0.132,17
+아시아,유럽,3,Hometown Cha-Cha-Cha,0.12,22
+아시아,유럽,4,Minnal Murali,0.107,13
+아시아,유럽,5,Single’s Inferno,0.091,16
+아시아,유럽,6,Escape Room,0.089,11
+아시아,유럽,7,Two,0.088,11
+아시아,유럽,8,Anna,0.087,12
+아시아,유럽,9,Miss Bala,0.083,11
+아시아,유럽,10,The Terminal,0.082,13
+유럽,아시아,1,Archive 81,0.13,23
+유럽,아시아,2,Tomb Raider,0.129,28
+유럽,아시아,3,How the Grinch Stole Christmas,0.121,21
+유럽,아시아,4,Creed II,0.114,21
+유럽,아시아,5,The Queen of Flow,0.112,8
+유럽,아시아,6,Cocaine Cowboys: The Kings of Miami,0.108,13
+유럽,아시아,7,New Amsterdam,0.104,15
+유럽,아시아,8,Worth,0.103,14
+유럽,아시아,9,Dive Club,0.101,10
+유럽,아시아,10,Sounds Like Love,0.101,10
+남미,북중미,1,The 2nd,0.114,5
+북중미,남미,1,On My Block,0.358,12
+북중미,남미,2,Selling Sunset,0.247,5
+북중미,남미,3,Love Is Blind,0.225,5
+북중미,남미,4,Dive Club,0.223,5
+북중미,남미,5,Big Mouth,0.215,7
+북중미,남미,6,The House of Flowers: The Movie,0.211,6
+북중미,남미,7,Sin Nombre,0.207,6
+북중미,남미,8,SHAMAN KING,0.202,6
+북중미,남미,9,Blood & Water,0.2,6
+북중미,남미,10,The Claus Family,0.197,5
+남미,유럽,1,Green Snake,0.136,6
+남미,유럽,2,The Whole Truth,0.132,10
+남미,유럽,3,Night School,0.129,9
+남미,유럽,4,Hometown Cha-Cha-Cha,0.12,8
+남미,유럽,5,Grey's Anatomy,0.12,10
+남미,유럽,6,211,0.119,10
+남미,유럽,7,Extinct,0.116,7
+남미,유럽,8,Dead Man Down,0.114,10
+남미,유럽,9,First Kill,0.114,10
+남미,유럽,10,Backtrace,0.114,10
+유럽,남미,1,On My Block,0.358,26
+유럽,남미,2,The Good Doctor,0.296,26
+유럽,남미,3,Turning Point: 9/11 and the War on Terror,0.286,33
+유럽,남미,4,Chernobyl 1986,0.281,25
+유럽,남미,5,The Magnificent Seven,0.278,29
+유럽,남미,6,Sonic the Hedgehog,0.27,21
+유럽,남미,7,Mr. Robot,0.268,14
+유럽,남미,8,Jason Bourne,0.266,20
+유럽,남미,9,14 Peaks: Nothing Is Impossible,0.26,32
+유럽,남미,10,Me Before You,0.259,26

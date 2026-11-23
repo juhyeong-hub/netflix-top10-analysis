@@ -1,0 +1,57 @@
+﻿from대륙,to대륙,순위,show_title,확산유사도점수,from진입국가수
+아시아,유럽,1,The Last Stand,0.188,8
+아시아,유럽,2,Wonder Woman,0.182,18
+아시아,유럽,3,Backtrace,0.177,10
+아시아,유럽,4,Fear,0.176,8
+아시아,유럽,5,Miss Night and Day,0.175,19
+아시아,유럽,6,Snow White & the Huntsman,0.171,12
+아시아,유럽,7,The Possession of Hannah Grace,0.171,10
+아시아,유럽,8,Bangkok Breaking: Heaven and Hell,0.17,10
+아시아,유럽,9,The Atypical Family,0.169,20
+아시아,유럽,10,Green Snake,0.168,12
+유럽,아시아,1,Nothing to Lose,0.193,21
+유럽,아시아,2,1883,0.183,26
+유럽,아시아,3,Ángela,0.183,32
+유럽,아시아,4,The Beautiful Game,0.18,22
+유럽,아시아,5,Katrina: Come Hell and High Water,0.18,30
+유럽,아시아,6,The Dead Don't Die,0.176,15
+유럽,아시아,7,Heart Parade,0.176,18
+유럽,아시아,8,Christmas on Mistletoe Farm,0.17,21
+유럽,아시아,9,"A Friend, a Murderer",0.169,31
+유럽,아시아,10,Departure,0.163,15
+남미,북중미,1,Rafa,0.228,5
+남미,북중미,2,Band of Brothers,0.188,6
+남미,북중미,3,There Will Be Blood,0.162,5
+남미,북중미,4,"Disco, Ibiza, Locomía",0.147,7
+남미,북중미,5,Moria,0.135,7
+남미,북중미,6,El marginal,0.113,5
+북중미,남미,1,On My Block,0.414,12
+북중미,남미,2,Money Shot: The Pornhub Story,0.408,6
+북중미,남미,3,Partner Track,0.402,9
+북중미,남미,4,The Bubble,0.399,7
+북중미,남미,5,Top Boy,0.392,8
+북중미,남미,6,Ghostbusters: Afterlife,0.386,5
+북중미,남미,7,Perfect Match,0.384,10
+북중미,남미,8,The Reunion,0.378,8
+북중미,남미,9,The Family Stone,0.369,6
+북중미,남미,10,American Made,0.369,8
+남미,유럽,1,A Dog's Way Home,0.19,10
+남미,유럽,2,The Last Stand,0.188,9
+남미,유럽,3,A Bad Moms Christmas,0.179,9
+남미,유럽,4,Backtrace,0.177,10
+남미,유럽,5,On the Line,0.176,9
+남미,유럽,6,Fear,0.176,9
+남미,유럽,7,Miss Night and Day,0.175,8
+남미,유럽,8,Freelance,0.173,10
+남미,유럽,9,Dead Man Down,0.172,10
+남미,유럽,10,Snow White & the Huntsman,0.171,6
+유럽,남미,1,On My Block,0.414,26
+유럽,남미,2,Money Shot: The Pornhub Story,0.408,32
+유럽,남미,3,Partner Track,0.402,33
+유럽,남미,4,The Bubble,0.399,30
+유럽,남미,5,Top Boy,0.392,31
+유럽,남미,6,Trust No One: The Hunt for the Crypto King,0.391,32
+유럽,남미,7,Ghostbusters: Afterlife,0.386,27
+유럽,남미,8,Perfect Match,0.384,30
+유럽,남미,9,The Reunion,0.378,25
+유럽,남미,10,Ford v. Ferrari,0.377,29

@@ -1,0 +1,95 @@
+﻿country_name,동시진입률,로지스틱계수
+Argentina,0.393,0.168
+Australia,0.323,0.688
+Austria,0.349,-0.17
+Bahamas,0.339,0.243
+Bahrain,0.376,0.095
+Bangladesh,0.287,0.184
+Belgium,0.376,0.05
+Bolivia,0.363,0.848
+Brazil,0.377,1.396
+Bulgaria,0.349,0.114
+Canada,0.33,0.766
+Chile,0.398,-0.373
+Colombia,0.39,0.28
+Costa Rica,0.398,-0.148
+Croatia,0.365,0.216
+Cyprus,0.359,-0.505
+Czech Republic,0.351,0.12
+Denmark,0.337,0.043
+Dominican Republic,0.374,0.051
+Ecuador,0.368,0.025
+Egypt,0.302,-0.691
+El Salvador,0.369,-0.335
+Estonia,0.332,0.214
+Finland,0.345,-0.04
+France,0.344,-0.07
+Germany,0.34,0.032
+Greece,0.357,-0.075
+Guadeloupe,0.342,0.135
+Guatemala,0.377,0.464
+Honduras,0.377,-0.158
+Hong Kong,0.276,0.335
+Hungary,0.385,0.97
+Iceland,0.342,-0.217
+India,0.262,1.008
+Indonesia,0.245,0.466
+Ireland,0.287,-0.114
+Israel,0.347,-0.153
+Italy,0.33,0.257
+Jamaica,0.322,-0.318
+Japan,0.145,0.57
+Jordan,0.309,-1.152
+Kenya,0.329,-0.14
+Kuwait,0.355,-0.052
+Latvia,0.323,-0.095
+Lebanon,0.326,-0.376
+Lithuania,0.33,0.126
+Luxembourg,0.407,0.536
+Malaysia,0.277,0.524
+Maldives,0.353,0.299
+Malta,0.376,0.156
+Martinique,0.341,0.518
+Mauritius,0.377,0.784
+Mexico,0.389,1.123
+Morocco,0.378,0.955
+Netherlands,0.343,0.035
+New Caledonia,0.329,-0.029
+New Zealand,0.316,-0.012
+Nicaragua,0.373,-0.012
+Nigeria,0.297,0.586
+Norway,0.341,0.665
+Oman,0.356,0.973
+Pakistan,0.281,0.106
+Panama,0.418,0.137
+Paraguay,0.403,-0.143
+Peru,0.374,0.401
+Philippines,0.263,-0.178
+Poland,0.335,0.522
+Portugal,0.412,1.145
+Qatar,0.377,0.417
+Romania,0.352,-0.21
+Russia,0.039,0.658
+Réunion,0.336,0.333
+Saudi Arabia,0.337,0.564
+Serbia,0.372,0.143
+Singapore,0.316,0.489
+Slovakia,0.376,0.572
+Slovenia,0.35,-0.733
+South Africa,0.315,-0.426
+South Korea,0.19,1.088
+Spain,0.355,0.77
+Sri Lanka,0.358,0.093
+Sweden,0.343,0.088
+Switzerland,0.392,0.913
+Taiwan,0.231,0.457
+Thailand,0.244,0.513
+Trinidad and Tobago,0.353,-0.349
+Turkey,0.303,0.425
+Ukraine,0.287,0.726
+United Arab Emirates,0.379,0.652
+United Kingdom,0.298,0.379
+United States,0.36,3.588
+Uruguay,0.399,1.361
+Venezuela,0.398,0.884
+Vietnam,0.243,-0.282
