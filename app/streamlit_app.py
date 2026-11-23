@@ -254,9 +254,10 @@ with tab3:
     st.dataframe(cmat, hide_index=True)
     m1, m2, m3 = st.columns(3)
     ne_en = cmat[(cmat.출신언어 == "비영어") & (cmat.타깃시장 == "영어권")].진입률.iloc[0]
-    en_out = cmat[(cmat.출신언어 == "영어") & (cmat.타깃시장 == "아시아")].진입률.iloc[0]
+    NE_TARGETS = ["유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]
+    en_ne = cmat[(cmat.출신언어 == "영어") & (cmat.타깃시장.isin(NE_TARGETS))].진입률.mean()
     m1.metric("비영어 히트 → 영어권", f"{ne_en}%", "5년간 23~24% 정체")
-    m2.metric("영어 히트 → 아시아", f"{en_out}%", "영어 허브의 역방향 우위")
+    m2.metric("영어 히트 → 비영어권 평균", f"{en_ne:.1f}%", "비영어 5개 시장 그룹 평균")
     m3.metric("영어권 전용 데뷔의 히트율", "19.3%", "다중 대륙 데뷔는 81.9%")
     st.markdown("### 비영어 히트의 장르별 영어권 통과율")
     st.caption("긴밀감 장르(스릴러·미스터리·범죄)는 잘 통과하고, 유머·음악·애니메이션은 벽이 높습니다")
