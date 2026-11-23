@@ -64,6 +64,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 69,True,1,다중(영어+비영어),1,Films
+1,True,0,영어권 전용 데뷔,0,Films
 34,True,1,다중(영어+비영어),1,TV
 90,True,1,다중(영어+비영어),1,TV
 3,False,1,비영어권 전용 데뷔,1,Films
@@ -151,6 +152,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 19,False,1,비영어권 전용 데뷔,1,Films
+3,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,1,TV
@@ -241,6 +243,7 @@
 67,True,1,다중(영어+비영어),1,Films
 29,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+3,False,1,비영어권 전용 데뷔,0,Films
 20,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 12,False,1,비영어권 전용 데뷔,0,Films
@@ -271,7 +274,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
-4,False,1,비영어권 전용 데뷔,1,Films
+4,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 19,True,1,다중(영어+비영어),1,Films
@@ -618,6 +621,7 @@
 5,False,1,비영어권 전용 데뷔,0,Films
 13,False,1,비영어권 전용 데뷔,1,TV
 3,True,1,다중(영어+비영어),0,Films
+25,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -659,10 +663,12 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 18,False,1,비영어권 전용 데뷔,1,Films
+12,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 4,False,1,비영어권 전용 데뷔,1,TV
 5,False,1,비영어권 전용 데뷔,0,TV
 12,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -676,7 +682,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,1,Films
@@ -851,6 +857,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 5,False,1,비영어권 전용 데뷔,1,Films
 92,True,1,다중(영어+비영어),1,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,Films
@@ -1044,6 +1051,7 @@
 11,False,1,비영어권 전용 데뷔,0,Films
 64,True,1,다중(영어+비영어),1,Films
 21,True,1,다중(영어+비영어),0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 15,False,1,비영어권 전용 데뷔,1,TV
 3,False,1,비영어권 전용 데뷔,1,Films
@@ -1076,6 +1084,7 @@
 38,True,1,다중(영어+비영어),1,TV
 2,False,1,비영어권 전용 데뷔,0,Films
 14,False,1,비영어권 전용 데뷔,1,Films
+5,False,1,비영어권 전용 데뷔,0,Films
 14,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 82,True,1,다중(영어+비영어),1,Films
@@ -1420,7 +1429,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 62,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 6,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -1442,6 +1451,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 5,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 7,False,1,비영어권 전용 데뷔,1,TV
 2,True,0,영어권 전용 데뷔,0,TV
@@ -1671,6 +1681,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -1836,6 +1847,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+2,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,1,TV
@@ -1959,6 +1971,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
 10,False,1,비영어권 전용 데뷔,1,Films
+6,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 5,True,1,다중(영어+비영어),0,TV
 20,True,1,다중(영어+비영어),0,TV
@@ -2169,6 +2182,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 19,False,1,비영어권 전용 데뷔,1,Films
@@ -2312,6 +2326,7 @@
 4,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 17,True,1,다중(영어+비영어),0,TV
+1,False,1,비영어권 전용 데뷔,0,TV
 7,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 9,False,1,비영어권 전용 데뷔,1,Films
@@ -2346,6 +2361,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 8,False,1,비영어권 전용 데뷔,1,Films
 13,False,1,비영어권 전용 데뷔,1,Films
+14,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 13,False,1,비영어권 전용 데뷔,1,TV
 20,False,1,비영어권 전용 데뷔,0,Films
@@ -2556,6 +2572,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
@@ -2631,7 +2648,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 87,True,1,다중(영어+비영어),1,TV
 52,True,1,다중(영어+비영어),1,TV
-1,True,0,영어권 전용 데뷔,0,TV
+1,True,0,영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -2800,6 +2817,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 21,False,1,비영어권 전용 데뷔,1,TV
+53,True,1,다중(영어+비영어),1,TV
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
@@ -2888,7 +2906,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 46,True,1,다중(영어+비영어),1,TV
@@ -3094,6 +3112,7 @@
 11,False,1,비영어권 전용 데뷔,0,Films
 5,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 12,False,1,비영어권 전용 데뷔,1,TV
@@ -3222,7 +3241,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,1,Films
-2,False,1,비영어권 전용 데뷔,0,Films
+2,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -3376,10 +3395,10 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 8,True,1,다중(영어+비영어),0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-21,False,1,비영어권 전용 데뷔,1,TV
+21,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,1,TV
@@ -3558,9 +3577,10 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,True,1,다중(영어+비영어),1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-11,False,1,비영어권 전용 데뷔,1,TV
+11,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
@@ -3735,7 +3755,7 @@
 2,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -3779,7 +3799,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,1,Films
-1,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -4062,7 +4082,7 @@
 10,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-3,True,1,다중(영어+비영어),0,TV
+3,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 6,False,1,비영어권 전용 데뷔,1,Films
@@ -4090,7 +4110,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 15,False,1,비영어권 전용 데뷔,1,TV
-18,True,1,다중(영어+비영어),1,Films
+18,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 9,True,1,다중(영어+비영어),0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -4287,13 +4307,13 @@
 16,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 9,False,1,비영어권 전용 데뷔,1,TV
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
 79,True,1,다중(영어+비영어),1,Films
 1,True,0,영어권 전용 데뷔,0,Films
@@ -4366,6 +4386,7 @@
 23,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,1,Films
 11,False,1,비영어권 전용 데뷔,0,Films
+3,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,Films
 8,True,1,다중(영어+비영어),1,Films
@@ -4570,7 +4591,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -4655,13 +4676,13 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
-1,True,0,영어권 전용 데뷔,0,TV
+1,True,0,영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 67,True,1,다중(영어+비영어),1,Films
 28,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,TV
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -4893,6 +4914,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 89,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
+10,False,1,비영어권 전용 데뷔,0,TV
 7,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,TV
@@ -5115,6 +5137,7 @@
 1,True,0,영어권 전용 데뷔,1,Films
 78,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+5,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -5155,7 +5178,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 14,False,1,비영어권 전용 데뷔,1,TV
-1,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,1,TV
 18,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 41,False,1,비영어권 전용 데뷔,1,Films
@@ -5197,6 +5220,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 6,False,1,비영어권 전용 데뷔,0,Films
@@ -5415,7 +5439,7 @@
 10,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -5608,7 +5632,7 @@
 4,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
-3,False,1,비영어권 전용 데뷔,1,TV
+3,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -5712,7 +5736,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,1,TV
-1,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 37,True,1,다중(영어+비영어),1,TV
@@ -5839,7 +5863,7 @@
 9,False,1,비영어권 전용 데뷔,0,TV
 40,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -6289,6 +6313,7 @@
 2,False,1,비영어권 전용 데뷔,1,Films
 2,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 50,True,1,다중(영어+비영어),1,TV
 6,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -6313,6 +6338,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+4,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 21,True,1,다중(영어+비영어),1,Films
@@ -6433,7 +6459,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 65,True,1,다중(영어+비영어),1,Films
 17,True,1,다중(영어+비영어),0,Films
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -6445,7 +6471,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,Films
+1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 10,True,1,다중(영어+비영어),0,TV
@@ -6570,6 +6596,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 2,True,1,다중(영어+비영어),1,Films
+14,False,1,비영어권 전용 데뷔,1,TV
 48,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 2,True,0,영어권 전용 데뷔,0,TV
@@ -6677,7 +6704,7 @@
 74,True,1,다중(영어+비영어),1,Films
 4,False,1,비영어권 전용 데뷔,0,Films
 5,False,1,비영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 4,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,TV
@@ -6805,7 +6832,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 3,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -6820,6 +6847,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+83,True,1,다중(영어+비영어),1,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 8,False,1,비영어권 전용 데뷔,1,TV
 7,False,1,비영어권 전용 데뷔,1,TV
@@ -6897,7 +6925,7 @@
 12,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 3,False,1,비영어권 전용 데뷔,1,Films
 55,True,1,다중(영어+비영어),1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -7121,7 +7149,7 @@
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,TV
-2,False,1,비영어권 전용 데뷔,1,TV
+2,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7134,7 +7162,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 19,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 5,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -7168,7 +7196,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 45,False,1,비영어권 전용 데뷔,1,Films
 4,False,1,비영어권 전용 데뷔,0,Films
-3,False,1,비영어권 전용 데뷔,0,TV
+3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -7217,6 +7245,7 @@
 6,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 6,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -7330,6 +7359,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 6,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7423,6 +7453,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7599,7 +7630,9 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,1,TV
+2,False,1,비영어권 전용 데뷔,0,TV
+7,True,1,다중(영어+비영어),0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
@@ -7688,6 +7721,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7806,6 +7840,7 @@
 5,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 8,False,1,비영어권 전용 데뷔,1,TV
+12,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7861,7 +7896,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,1,Films
@@ -7914,7 +7949,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 12,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
-2,True,0,영어권 전용 데뷔,0,Films
+2,True,0,영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -7936,7 +7971,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,1,TV
-2,False,1,비영어권 전용 데뷔,1,TV
+2,False,1,비영어권 전용 데뷔,1,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -8165,6 +8200,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
+8,True,1,다중(영어+비영어),0,Films
 1,True,0,영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 29,True,1,다중(영어+비영어),1,Films
@@ -8316,7 +8352,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,TV
-10,False,1,비영어권 전용 데뷔,1,Films
+10,False,1,비영어권 전용 데뷔,1,TV
 4,False,1,비영어권 전용 데뷔,0,Films
 7,True,1,다중(영어+비영어),1,TV
 3,False,1,비영어권 전용 데뷔,0,Films
@@ -8330,7 +8366,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-2,False,1,비영어권 전용 데뷔,1,TV
+2,False,1,비영어권 전용 데뷔,1,Films
 63,True,1,다중(영어+비영어),1,TV
 10,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -8539,7 +8575,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 10,False,1,비영어권 전용 데뷔,1,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -8694,7 +8730,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 14,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 9,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,TV
@@ -8719,7 +8755,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,1,TV
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -8876,6 +8912,7 @@
 93,True,1,다중(영어+비영어),1,TV
 9,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 3,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,TV
@@ -8891,6 +8928,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 8,True,1,다중(영어+비영어),0,Films
 1,True,0,영어권 전용 데뷔,0,TV
@@ -9125,6 +9163,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -9239,7 +9278,7 @@
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -9427,7 +9466,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -9506,6 +9545,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,0,Films
+80,True,1,다중(영어+비영어),1,TV
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -9522,7 +9562,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 26,True,1,다중(영어+비영어),1,TV
-6,True,1,다중(영어+비영어),1,TV
+6,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 5,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -9609,6 +9649,7 @@
 2,True,0,영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+63,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 5,True,1,다중(영어+비영어),1,TV
@@ -9685,7 +9726,7 @@
 79,True,1,다중(영어+비영어),1,Films
 5,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 5,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
@@ -9746,6 +9787,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 23,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,0,TV
 40,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
@@ -9904,7 +9946,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 83,True,1,다중(영어+비영어),1,TV
-12,False,1,비영어권 전용 데뷔,1,TV
+12,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,1,TV
 2,True,0,영어권 전용 데뷔,0,Films
 16,False,1,비영어권 전용 데뷔,1,TV
@@ -9925,8 +9967,8 @@
 1,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,TV
-1,False,1,비영어권 전용 데뷔,0,Films
-2,True,0,영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,0,TV
+2,True,0,영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -9938,7 +9980,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 15,False,1,비영어권 전용 데뷔,1,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 12,False,1,비영어권 전용 데뷔,1,TV
 28,True,1,다중(영어+비영어),1,Films
 2,True,0,영어권 전용 데뷔,0,Films
@@ -9974,6 +10016,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
+55,True,1,다중(영어+비영어),1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,0,Films
 5,False,1,비영어권 전용 데뷔,0,Films
@@ -9981,6 +10024,7 @@
 4,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+12,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,0,Films
@@ -10020,7 +10064,7 @@
 4,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-2,True,1,다중(영어+비영어),1,TV
+2,True,1,다중(영어+비영어),1,Films
 10,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 94,True,1,다중(영어+비영어),1,Films
@@ -10188,7 +10232,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 7,False,1,비영어권 전용 데뷔,1,TV
 1,True,0,영어권 전용 데뷔,0,Films
-2,False,1,비영어권 전용 데뷔,0,Films
+2,False,1,비영어권 전용 데뷔,0,TV
 5,True,1,다중(영어+비영어),1,TV
 4,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -10260,6 +10304,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,Films
+7,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,Films
@@ -10693,7 +10738,7 @@
 12,False,1,비영어권 전용 데뷔,1,TV
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
-1,True,0,영어권 전용 데뷔,0,TV
+1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,TV
@@ -10724,7 +10769,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,Films
 80,True,1,다중(영어+비영어),1,TV
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,TV
 5,False,1,비영어권 전용 데뷔,0,TV
 1,True,0,영어권 전용 데뷔,0,Films
@@ -10839,6 +10884,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 4,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 24,False,1,비영어권 전용 데뷔,1,TV
 2,False,1,비영어권 전용 데뷔,0,Films
@@ -10852,7 +10898,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 5,False,1,비영어권 전용 데뷔,0,TV
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 17,False,1,비영어권 전용 데뷔,1,TV
 44,True,1,다중(영어+비영어),1,TV
@@ -10862,6 +10908,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,1,Films
+2,True,0,영어권 전용 데뷔,0,Films
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -10878,6 +10925,7 @@
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+3,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -10894,7 +10942,7 @@
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
-4,True,1,다중(영어+비영어),1,Films
+4,True,1,다중(영어+비영어),1,TV
 1,True,0,영어권 전용 데뷔,0,Films
 89,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -10944,7 +10992,7 @@
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-2,True,0,영어권 전용 데뷔,0,Films
+2,True,0,영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 78,True,1,다중(영어+비영어),1,Films
 5,False,1,비영어권 전용 데뷔,0,Films
@@ -10976,7 +11024,7 @@
 11,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
-1,False,1,비영어권 전용 데뷔,1,TV
+1,False,1,비영어권 전용 데뷔,1,Films
 20,False,1,비영어권 전용 데뷔,1,Films
 1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -11048,6 +11096,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
+26,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 4,False,1,비영어권 전용 데뷔,1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -11104,6 +11153,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
+1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 3,True,1,다중(영어+비영어),0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -11264,7 +11314,7 @@
 6,False,1,비영어권 전용 데뷔,0,Films
 12,False,1,비영어권 전용 데뷔,1,Films
 6,False,1,비영어권 전용 데뷔,1,Films
-2,False,1,비영어권 전용 데뷔,1,TV
+2,False,1,비영어권 전용 데뷔,1,Films
 2,True,1,다중(영어+비영어),1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,True,0,영어권 전용 데뷔,1,Films
@@ -11277,7 +11327,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 18,False,1,비영어권 전용 데뷔,1,TV
-1,True,0,영어권 전용 데뷔,0,TV
+1,True,0,영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 41,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -11630,7 +11680,7 @@
 1,False,1,비영어권 전용 데뷔,0,TV
 2,False,1,비영어권 전용 데뷔,1,TV
 59,True,1,다중(영어+비영어),1,Films
-1,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 93,True,1,다중(영어+비영어),1,Films
 1,True,0,영어권 전용 데뷔,0,Films
@@ -11664,7 +11714,7 @@
 1,False,1,비영어권 전용 데뷔,1,Films
 80,True,1,다중(영어+비영어),1,TV
 3,False,1,비영어권 전용 데뷔,0,Films
-2,False,1,비영어권 전용 데뷔,0,TV
+2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,True,0,영어권 전용 데뷔,0,TV
@@ -11937,7 +11987,7 @@
 46,True,1,다중(영어+비영어),1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
-1,True,0,영어권 전용 데뷔,1,TV
+1,True,0,영어권 전용 데뷔,1,Films
 2,False,1,비영어권 전용 데뷔,0,Films
 64,True,1,다중(영어+비영어),1,TV
 29,False,1,비영어권 전용 데뷔,1,Films
@@ -12026,6 +12076,7 @@
 20,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 6,False,1,비영어권 전용 데뷔,0,Films
+1,False,1,비영어권 전용 데뷔,0,TV
 16,False,1,비영어권 전용 데뷔,1,Films
 3,False,1,비영어권 전용 데뷔,1,Films
 1,False,1,비영어권 전용 데뷔,0,Films
@@ -12236,6 +12287,7 @@
 90,True,1,다중(영어+비영어),1,TV
 1,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,1,Films
+5,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
 4,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,TV
@@ -12358,7 +12410,7 @@
 2,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
 2,False,1,비영어권 전용 데뷔,0,TV
-13,False,1,비영어권 전용 데뷔,1,Films
+13,False,1,비영어권 전용 데뷔,1,TV
 3,False,1,비영어권 전용 데뷔,0,TV
 3,False,1,비영어권 전용 데뷔,0,Films
 1,False,1,비영어권 전용 데뷔,0,Films
