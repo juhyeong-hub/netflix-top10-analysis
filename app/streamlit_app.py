@@ -419,8 +419,8 @@ with tab6:
     k3.metric("사분면", r.사분면)
     k4.metric("블록", r.블록)
     blk = r.블록
-    if blk in power_period.columns:
-        mv = power_period[[blk]].rename(columns={blk: "파워셰어 (%)"})
+    if blk in power_period.index:
+        mv = power_period.loc[blk].to_frame(name="파워셰어 (%)")
         st.line_chart(mv, color="#e50914", height=260)
         st.caption(f"선택 국가가 속한 블록 '{blk}'의 연도별 파워셰어 추이 — 그 시장의 파워 이동 (2021H2~2026H1)")
     else:
