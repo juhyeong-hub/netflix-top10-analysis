@@ -18,6 +18,8 @@ import streamlit as st
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
 
 ROOT = Path(__file__).resolve().parent.parent
 FIG = ROOT / "reports" / "figures"
@@ -238,7 +240,7 @@ with tab2:
                "남미 기타·동아시아·유럽 기타는 취향이 비슷한 나라끼리 묶었습니다. "
                "큰 나라와 작은 나라를 묶으면 큰 나라의 파워가 희석되므로, 혼자 서는 시장은 분리하는 것이 정확합니다.")
     bb = blocks.sort_values("파워셰어", ascending=False)
-    st.bar_chart(bb.set_index("블록")[["파워셰어"]], height=380)
+    st.bar_chart(bb.set_index("블록")[["파워셰어"]], height=380, color="#e50914")
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown("### 국가별 사분면 (파워 × 미러)")
@@ -323,7 +325,7 @@ with tab3:
     st.caption("긴밀감 장르(스릴러·미스터리·범죄)는 잘 통과하고, 유머·음악·애니메이션은 벽이 높습니다")
     genre_c_bar = pd.read_csv(ROOT / "data/processed/language_barrier_by_genre.csv").set_index("장르")
     genre_c_bar = genre_c_bar.rename(index=GENRE_KO)
-    st.bar_chart(genre_c_bar["영어권진입률"], height=380)
+    st.bar_chart(genre_c_bar["영어권진입률"], height=380, color="#e50914")
 
 with tab5:
     st.markdown("### 신작 확산 예측 시뮬레이터")
@@ -434,19 +436,20 @@ with tab6:
     k2.metric("미러 리프트", f"{r['리프트(미러)']:.2f}", "높으면 글로벌 따라감")
     k3.metric("사분면", r.사분면)
     k4.metric("블록", r.블록)
-    py = pop_y[pop_y.country_name == sel].iloc[0]
-    YEARS = [str(x) for x in range(2021, 2027)]
-    df1 = pd.DataFrame({"인구": [py[yv] for yv in YEARS]}, index=YEARS)
-    st.line_chart(df1, height=250)
-    if "인구_2021_2025합" in py.index:
-        st.caption(f"2021~2025 누적 인구: {py.인구_2021_2025합:,.0f}")
-    if f"파워/인구비_2021" in r.index:
-        dens = pd.DataFrame({"시장 밀도 (파워/인구)": [r[f"파워/인구비_{yv}"] for yv in YEARS]}, index=YEARS)
-        st.line_chart(dens, height=220)
-        st.caption("연도별 시장 밀도 = 그 해 파워셰어 ÷ 그 해 인구셰어 — 1.0이면 인구 비중만큼 기여")
-        st.metric("파워/인구비 (2026년 기준)", f"{r['파워/인구비_2026']:.2f}",
-                  f"2021년 {r['파워/인구비_2021']:.2f} 대비 변화 {r['파워/인구비_2026'] - r['파워/인구비_2021']:+.2f}")
-    st.caption("2021~2026 인구 (UN WPP)")
+    if st.toggle("인구·파워/인구비 그래프 보기", value=False):
+        py = pop_y[pop_y.country_name == sel].iloc[0]
+        YEARS = [str(x) for x in range(2021, 2027)]
+        df1 = pd.DataFrame({"인구": [py[yv] for yv in YEARS]}, index=YEARS)
+        st.line_chart(df1, color="#e50914", height=250)
+        if "인구_2021_2025합" in py.index:
+            st.caption(f"2021~2025 누적 인구: {py.인구_2021_2025합:,.0f}")
+        st.caption("2021~2026 인구 (UN WPP)")
+        if f"파워/인구비_2021" in r.index:
+            dens = pd.DataFrame({"시장 밀도 (파워/인구)": [r[f"파워/인구비_{yv}"] for yv in YEARS]}, index=YEARS)
+            st.line_chart(dens, color="#e50914", height=220)
+            st.caption("연도별 시장 밀도 = 그 해 파워셰어 ÷ 그 해 인구셰어 — 1.0이면 인구 비중만큼 기여")
+            st.metric("파워/인구비 (2026년 기준)", f"{r['파워/인구비_2026']:.2f}",
+                      f"2021년 {r['파워/인구비_2021']:.2f} 대비 변화 {r['파워/인구비_2026'] - r['파워/인구비_2021']:+.2f}")
 
 with tab4:
     st.markdown("### 모델 성능 — LightGBM v2.2 (최종 모델)")
@@ -501,27 +504,29 @@ with tab7:
     INSIGHTS = [
         ("미국 단독 진입은 최선이 아니다",
          "영어권 전용 데뷔의 글로벌 히트율은 19.4%, 다중 대륙 동시 데뷔는 82.0% — 배포 범위를 넓힐수록 확산 확률이 올라가는 구조다.",
-         "신작 배포 시 동시 공개를 기본 설계로 — 더빙·자막 비용은 제작 예산의 일부로 미리 확보한다."),
+         "신작 배포 시 ", "동시 공개를 기본 설계로", " — 더빙·자막 비용은 제작 예산의 일부로 미리 확보한다."),
         ("인구가 아니라 파워·밀도가 핵심",
          "인도(14.5억)보다 캐나다(4천만)의 파워 밀도가 훨씬 높다. 인구 피처 추가의 예측 기여는 AUC +0.009에 그쳤다.",
-         "마케팅 예산을 인구 순위가 아니라 밀도 순위로 배분 — 캐나다(11.9)·호주(5.8) 같은 소인구 고효율 시장을 우선한다."),
+         "마케팅 예산을 ", "인구 순위가 아니라 밀도 순위로 배분", " — 캐나다(11.9)·호주(5.8) 같은 소인구 고효율 시장을 우선한다."),
         ("미러 효과 유의",
          "파나마·우루과이·룩셈부르크의 높은 동시 진입률은 따라잡기다. 진짜 파워 시장(미국·인도·브라질·캐나다 등)과 순수 미러 41개국을 구분해야 한다.",
-         "나라별 성과 리포트에 파워/미러 태그를 부착 — 순수 미러 41개국은 마케팅 투자 불필요, 투자는 파워 시장으로 한정해 낭비를 막는다."),
+         "나라별 성과 리포트에 ", "파워/미러 태그를 부착", " — 순수 미러 41개국은 마케팅 투자 불필요, 투자는 파워 시장으로 한정해 낭비를 막는다."),
         ("언어 장벽은 장르로 일부 극복된다",
          "비영어 히트의 영어권 통과율은 평균 23.8% — 미스터리·스릴러·범죄(32~34%)는 벽이 낮고 코미디·로맨스(15~16%)는 높다.",
-         "비영어 원작 투자 심사에 장르별 영어권 통과율을 반영 — 긴밀감 장르는 베팅 가치가 높고, 코미디·로맨스는 더빙 품질 투자를 두 배로 하거나 영어 리메이크 등 우회 경로를 검토한다."),
+         "비영어 원작 투자 심사에 ", "장르별 영어권 통과율을 반영", " — 미스터리·스릴러·범죄(32~34%)는 글로벌 베팅 가치가 높고, 코미디·로맨스(15~16%)는 더빙 품질 투자를 두 배로 하거나 우회 경로를 검토한다."),
         ("시장 파워는 이동한다",
          "멕시코 영향력 감소(16.6%→1.4%), 인도·브라질 부상, 동아시아의 2022년 이후 등장 — 시장 지도는 고정되지 않는다.",
-         "지속적 갱신 필요 — 반년 단위 파워 재추정으로 시장 우선순위를 갱신. 부상 시장은 현지 제작 투자 확대 신호로 읽는다."),
+         "지속적 갱신 필요 — ", "반년 단위 파워 재추정으로 시장 우선순위를 갱신", ". 멕시코(16.6%→1.4%)는 단일 시장 과의존의 위험 사례이고, 인도·브라질·동아시아의 부상은 현지 제작 투자 확대 신호로 읽는다."),
         ("2단계 확산 예측 — 1주차 + 4주차",
          "1주차 정밀도 0.85로 조기 판단, 4주차 0.87로 정밀 확인 — 조기 의사결정과 정밀 확인을 분리해 사용할 수 있다.",
-         "1주차 조기 판단 + 4주차 정밀 확인의 2단계 운영 — 첫 주 진입 국가 수·밀도를 시뮬레이터에 넣어 점수화하고, 마케팅 증폭·현지화 확장을 1주 안에 결정한다."),
+         "", "1주차 조기 판단 + 4주차 정밀 확인의 2단계 운영", " — 진입 첫 주 진입 국가 수·밀도를 시뮬레이터에 넣어 점수화하고, 마케팅 증폭·현지화 확장을 1주 안에 결정한다. 4주차 재평가로 점진 확산형을 보완하며, 확률은 절대값이 아니라 동시 진입 후보 간 상대 비교로 사용한다."),
     ]
-    for i, (title, body, apply_) in enumerate(INSIGHTS, 1):
+    for i, (title, body, pre, red, post) in enumerate(INSIGHTS, 1):
         with st.container(border=True):
-            st.markdown(f":red[**{i}. {title}**]")
+            st.markdown(f"**{title}**")
             st.markdown(body)
-            st.markdown(f":gray[→ 실무 적용] {apply_}")
+            st.markdown(
+                f'<b>→ 실무 적용</b> {pre}<b><u style="color:#e50914; text-underline-offset:3px;">{red}</u></b>{post}',
+                unsafe_allow_html=True)
     st.info("**한계** — 순위 데이터는 시청 시간의 세분량을 담지 않아 파워 추정은 순위 패턴 기반 구조적 추정이며, "
             "상관관계와 인과관계는 구분된다 — 진입/확산이 글로벌 히트를 유발한다는 인과 증명이 아니라 경향성이다.")
