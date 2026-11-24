@@ -388,7 +388,7 @@ with tab5:
     a.metric(f"🌍 글로벌 Top 10 도달 확률 ({snap_key} 발자국)", f"{p_g*100:.1f}%")
     b.metric(f"🌐 6대륙 전부 도달 확률 ({snap_key})", f"{p_s*100:.1f}%")
     st.progress(min(p_g, 1.0))
-    st.caption(f"몤델: {bundle.get('model_name', '?')} · 학습: {bundle.get('trained_at', '?')} · 피처 {len(feats)}개 · 보정 전 확률: 글로벌 {raw_g*100:.1f}% / 6대륙 {raw_s*100:.1f}%")
+    st.caption(f"모델: {bundle.get('model_name', '?')} · 학습: {bundle.get('trained_at', '?')} · 피처 {len(feats)}개 · 보정 전 확률: 글로벌 {raw_g*100:.1f}% / 6대륙 {raw_s*100:.1f}%")
     ko_names = ", ".join(KO.get(c, c) for c in sel)
     st.caption(f"선택 국가 {len(sel)}개 · 진입 대륙 {len(conts)}개 · 데뷔 {KO.get(debut_country, debut_country)} ({debut_year}) · "
                f"시장파워 합 {row['진입시장파워']:.1f} · 밀도합 {row['진입시장밀도합']:.1f}")
