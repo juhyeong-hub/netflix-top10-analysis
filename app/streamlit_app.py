@@ -203,7 +203,7 @@ POP24 = POWER_DF.인구2024.to_dict()
 DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
 
 st.title("🎬 Netflix Top 10 글로벌 확산 분석")
-st.caption("데이터: 넷플릭스 글로벌/94개국 주간 Top 10 (2021-07-04 ~ 2026-11-15, 281주) · 인구: UN WPP 2024 · 장르: IMDb")
+st.caption("데이터: 넷플릭스 글로벌/94개국 주간 Top 10 (2021-07-04 ~ 2026-11-15, 281주) · 인구: UN WPP 2024 · 장르: IMDb+JustWatch (커버 99.7%)")
 
 tab1, tab2, tab3, tab5, tab6, tab4 = st.tabs(
     ["📊 개요", "🧭 시장 파워 & 미러", "🗣️ 언어 장벽", "🔮 확산 예측 시뮬레이터", "🔎 나라 탐색기", "🤖 모델 성능"])
@@ -213,7 +213,7 @@ with tab1:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("분석 기간", "5년 4개월", "2021.7 ~ 2026.11 (281주)")
     c2.metric("다루는 국가", "94개국", "러시아 2022.3 이후 제외")
-    c3.metric("고유 작품", "12,486편", "장르 커버 93.2% (IMDb)")
+    c3.metric("고유 작품", "12,486편", "장르 커버 99.7% (IMDb+JustWatch)")
     c4.metric("글로벌 히트", "3,585편", "6대륙 전부 도달 1,657편")
     st.info("핵심 통찰: 차트에 '오르는가'보다 **어느 나라에서 오르는가**가 확산을 결정합니다. "
             "나라별 영향력 지표는 시장 파워와 미러 효과가 섞여 있어 해석 시 분리가 필요합니다.")
@@ -308,7 +308,7 @@ with tab5:
                                  format_func=lambda c: KO.get(c, c))
     tv = st.radio("형식", ["TV", "Films"], horizontal=True)
     lang_origin = st.radio("출신 언어", ["영어", "비영어"], horizontal=True)
-    genres = st.multiselect("장르 (IMDb)", TAGS, default=["Drama"],
+    genres = st.multiselect("장르 (IMDb+JustWatch)", TAGS, default=["Drama"],
                             format_func=lambda t: GENRE_KO.get(t, t))
     debut_year = st.selectbox("데뷔 연도", list(range(2021, 2027)), index=3)
     model = bundle["models"][f"{snap_key}_글로벌히트_lgbm"]
