@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Netflix Top 10 글로벌 확산 분석 — Streamlit 대시보드
-실행: python -m streamlit run app/streamlit_app.py"""
+"""Netflix Top 10 글로벌 확산 분석 — Streamlit 대시보드"""
+# ─────────────────────────────────────────────────────────────────────────────
+# 환경: Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4,
+#       scikit-learn 1.9.1, lightgbm 4.7.0, joblib 1.6.0,
+#       shap 0.54.1, streamlit 1.67.0 — requirements.txt 참고
+# 실행: python -m streamlit run app/streamlit_app.py
+#       (또는 https://netflix-top10-analysis-by-juhyeonglee.streamlit.app/)
+# 데이터: data/processed·references·models 하위 파일 필요 — GitHub 저장소에 포함
+# 분석 파이프라인: scripts/01~17 참고 (수집→반영→재계산→검증→그래프)
+# ─────────────────────────────────────────────────────────────────────────────
 from pathlib import Path
 import hashlib
 import joblib
