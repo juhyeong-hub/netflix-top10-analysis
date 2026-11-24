@@ -248,15 +248,32 @@ with tab2:
         q_filter = st.multiselect("사분면 필터", ["파워+미러", "파워형(독립시장)", "순수미러", "저활성"],
                                   default=["파워+미러", "파워형(독립시장)"])
         show = power[power.사분면.isin(q_filter)]
-        show = show.merge(pop_y[["country_name", "2026"]].rename(columns={"country_name": "country", "2026": "인구2026"}),
-                          on="country", how="left")
         show["국가"] = show.country.map(KO)
-        st.dataframe(show[["국가", "블록", "나라파워셰어", "리프트(미러)", "인구2026", "사분면"]]
-                     .style.format({"나라파워셰어": "{:.2%}", "인구2026": "{:,.0f}"}), height=420)
+        st.dataframe(show[["국가", "블록", "나라파워셰어", "리프트(미러)", "사분면"]]
+                     .style.format({"나라파워셰어": "{:.2%}", "리프트(미러)": "{:.2f}"}), height=380)
         st.warning("**⚠️ 미러 효과 유의 — 정의: 세계 차트를 그대로 따라 보는 나라의 성질**\n\n"
                    "순수미러 41개국(룩셈부르크·우루과이·모리셔스·칠레 등)의 높은 '영향력 계수'는 "
                    "그 나라 시장이 글로벌 히트를 만든 것이 아니라 **글로벌 히트를 그대로 따라 본 것**입니다.\n\n"
                    "차트 순위를 시장 파워로 해석하기 전에 사분면 분류를 먼저 확인하세요.")
+    st.markdown("### 시간에 따른 파워 이동 (연도별)")
+    lt = power_period.T[["미국", "인도", "브라질", "캐나다", "동아시아", "멕시코"]].reset_index().rename(columns={"index": "기간"})
+    lt = lt.melt(id_vars="기간", var_name="블록", value_name="파워셰어")
+    lt["파워셰어"] = (lt["파워셰어"] * 100).round(1)
+    porder = ["2021H2", "2022", "2023", "2024", "2025", "2026H1"]
+    palette = {"미국": "#ffffff", "인도": "#e50914", "브라질": "#ff8787", "캐나다": "#b3b3b3", "동아시아": "#ffd6d6", "멕시코": "#7a7a7a"}
+    xenc = alt.X("기간:N", sort=porder, axis=alt.Axis(labelColor="#e5e5e5", titleColor="#b3b3b3"), scale=alt.Scale(padding=50))
+    line = alt.Chart(lt).mark_line(point=True).encode(
+        x=xenc,
+        y=alt.Y("파워셰어:Q", title="파워셰어 (%)", axis=alt.Axis(labelColor="#e5e5e5", titleColor="#b3b3b3", gridColor="#333")),
+        color=alt.Color("블록:N", scale=alt.Scale(domain=list(palette), range=[palette[b] for b in palette]), legend=None),
+        tooltip=[alt.Tooltip("블록:N", title="블록"), alt.Tooltip("기간:N", title="기간"), alt.Tooltip("파워셰어:Q", format=".1f", title="파워셰어 (%)")])
+    last = lt[lt.기간 == "2026H1"]
+    labels = alt.Chart(last).mark_text(align="left", dx=6, fontSize=11, fontWeight="bold").encode(
+        x=alt.X("기간:N", sort=porder), y="파워셰어:Q", text=alt.Text("파워셰어:Q", format=".1f"),
+        color=alt.Color("블록:N", scale=alt.Scale(domain=list(palette), range=[palette[b] for b in palette]), legend=None))
+    st.altair_chart((line + labels).properties(background="#0b0b0b"), use_container_width=True)
+    st.caption("연도별 블록 파워셰어 추이 (%) — 미국은 누적 1위지만 2026H1엔 인도·브라질·동아시아에 밀려 4위(13.4%)")
+
     st.markdown("### 블록 파워 vs 인구 (파워/인구 비율 = 시장 성숙도)")
     bb2 = bb.sort_values("파워/인구비", ascending=False)
     bbar = alt.Chart(bb2).mark_bar(color="#e50914").encode(
