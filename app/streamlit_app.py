@@ -15,6 +15,9 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent.parent
 FIG = ROOT / "reports" / "figures"
@@ -213,8 +216,8 @@ DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027
 st.title("🎬 Netflix Top 10 글로벌 확산 분석")
 st.caption("데이터: 넷플릭스 글로벌/94개국 주간 Top 10 (2021-07-04 ~ 2026-11-15, 281주) · 인구: UN WPP 2024 · 장르: IMDb+JustWatch (커버 99.7%)")
 
-tab1, tab2, tab3, tab5, tab6, tab4 = st.tabs(
-    ["📊 개요", "🧭 시장 파워 & 미러", "🗣️ 언어 장벽", "🔮 확산 예측 시뮬레이터", "🔎 나라 탐색기", "🤖 모델 성능"])
+tab1, tab2, tab3, tab5, tab6, tab4, tab7 = st.tabs(
+    ["📊 개요", "🧭 시장 파워 & 미러", "🗣️ 언어 장벽", "🔮 확산 예측 시뮬레이터", "🔎 나라 탐색기", "🤖 모델 성능", "💡 인사이트"])
 
 # ================= 탭 1: 개요 =================
 with tab1:
@@ -252,8 +255,26 @@ with tab2:
                    "그 나라 시장이 글로벌 히트를 만든 것이 아니라 **글로벌 히트를 그대로 따라 본 것**입니다.\n\n"
                    "차트 순위를 시장 파워로 해석하기 전에 사분면 분류를 먼저 확인하세요.")
     st.markdown("### 블록 파워 vs 인구 (파워/인구 비율 = 시장 성숙도)")
-    st.dataframe(bb[["블록", "파워셰어", "인구셰어", "파워/인구비"]].style.format(
-        {"파워셰어": "{:.2%}", "인구셰어": "{:.2%}"}), hide_index=True, height=420)
+    bb2 = bb.sort_values("파워/인구비", ascending=True)
+    fig, ax = plt.subplots(figsize=(9, 5.4), dpi=140)
+    fig.patch.set_facecolor("#0b0b0b")
+    ax.set_facecolor("#0b0b0b")
+    colors = ["#e50914" if v >= 3 else "#888888" for v in bb2["파워/인구비"]]
+    ax.barh(range(len(bb2)), bb2["파워/인구비"], color=colors, height=0.62, zorder=3)
+    ax.set_yticks(range(len(bb2)))
+    ax.set_yticklabels(bb2["블록"], fontsize=10.5, color="#e5e5e5")
+    for i, v in enumerate(bb2["파워/인구비"]):
+        ax.text(v + 0.15, i, f"{v:.2f}", va="center", fontsize=9.5, fontweight="bold", color="#ffffff")
+    ax.set_xlabel("파워/인구비 — 인구 대비 넷플릭스 수요의 농도", fontsize=10, color="#b3b3b3")
+    ax.grid(axis="x", color="#333", zorder=0)
+    for sp in ["top", "right", "left"]:
+        ax.spines[sp].set_visible(False)
+    ax.spines["bottom"].set_color("#444")
+    ax.tick_params(left=False, bottom=False, colors="#e5e5e5")
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+    st.caption("레드 = 시장 성숙도 3.0 이상 (인구 대비 수요 농도가 높은 핵심 시장) · 값 = 파워/인구비")
 
 
 # ================= 탭 3: 언어 장벽 =================
@@ -262,7 +283,35 @@ with tab3:
     en_n = int(cmat[cmat.출신언어 == "영어"].표본.iloc[0])
     ne_n = int(cmat[cmat.출신언어 == "비영어"].표본.iloc[0])
     st.caption(f"표본: 영어 출신 {en_n:,}편 / 비영어 출신 {ne_n:,}편 (합 {en_n+ne_n:,}편) — 영어·비영어 카테고리 혼합 작품과 국가 차트 미진입 작품은 제외")
-    st.dataframe(cmat.drop(columns="표본"), hide_index=True)
+    hm_wide = cmat.pivot(index="출신언어", columns="타깃시장", values="진입률")
+    hm_wide = hm_wide[["영어권", "유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]]
+    mat = hm_wide.to_numpy(dtype=float)
+    ylabels = [f"{r} (표본 {int(cmat[cmat.출신언어 == r].표본.iloc[0]):,}편)" for r in hm_wide.index]
+    xlabels = list(hm_wide.columns)
+    fig, ax = plt.subplots(figsize=(9, 3.4), dpi=140)
+    fig.patch.set_facecolor("#0b0b0b")
+    ax.set_facecolor("#0b0b0b")
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("nf", ["#1a1a1a", "#7a0c12", "#e50914"])
+    im = ax.imshow(mat, cmap=cmap, aspect="auto", vmin=0, vmax=100)
+    ax.set_xticks(range(len(xlabels)))
+    ax.set_xticklabels(xlabels, fontsize=10, color="#e5e5e5")
+    ax.set_yticks(range(len(ylabels)))
+    ax.set_yticklabels(ylabels, fontsize=10.5, color="#e5e5e5")
+    for i in range(mat.shape[0]):
+        for j in range(mat.shape[1]):
+            v = mat[i, j]
+            ax.text(j, i, f"{v:.1f}%", ha="center", va="center", fontsize=11,
+                    fontweight="bold", color="#ffffff")
+    ax.set_xticks(np.arange(-0.5, len(xlabels), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, 2, 1), minor=True)
+    ax.grid(which="minor", color="#0b0b0b", lw=3)
+    ax.tick_params(which="both", length=0, colors="#e5e5e5")
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+    st.caption("셀 값 = 그 시장 그룹 차트 진입률 (%) — 어두울수록 낮고 레드에 가까울수록 높다")
     m1, m2, m3 = st.columns(3)
     ne_en = cmat[(cmat.출신언어 == "비영어") & (cmat.타깃시장 == "영어권")].진입률.iloc[0]
     NE_TARGETS = ["유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]
@@ -443,3 +492,36 @@ st.sidebar.markdown("""
 - 장르: IMDb 비상업 데이터셋
 - 모델: 로지스틱 회귀 + LightGBM (시간 분할 검증)
 """)
+
+
+# ================= 탭 7: 인사이트 =================
+with tab7:
+    st.markdown("### 핵심 인사이트")
+    st.caption("보고서 05 인사이트 섹션 기반 — 각 인사이트의 실무 적용까지 정리")
+    INSIGHTS = [
+        ("미국 단독 진입은 최선이 아니다",
+         "영어권 전용 데뷔의 글로벌 히트율은 19.4%, 다중 대륙 동시 데뷔는 82.0% — 배포 범위를 넓힐수록 확산 확률이 올라가는 구조다.",
+         "신작 배포 시 동시 공개를 기본 설계로 — 더빙·자막 비용은 제작 예산의 일부로 미리 확보한다."),
+        ("인구가 아니라 파워·밀도가 핵심",
+         "인도(14.5억)보다 캐나다(4천만)의 파워 밀도가 훨씬 높다. 인구 피처 추가의 예측 기여는 AUC +0.009에 그쳤다.",
+         "마케팅 예산을 인구 순위가 아니라 밀도 순위로 배분 — 캐나다(11.9)·호주(5.8) 같은 소인구 고효율 시장을 우선한다."),
+        ("미러 효과 유의",
+         "파나마·우루과이·룩셈부르크의 높은 동시 진입률은 따라잡기다. 진짜 파워 시장(미국·인도·브라질·캐나다 등)과 순수 미러 41개국을 구분해야 한다.",
+         "나라별 성과 리포트에 파워/미러 태그를 부착 — 순수 미러 41개국은 마케팅 투자 불필요, 투자는 파워 시장으로 한정해 낭비를 막는다."),
+        ("언어 장벽은 장르로 일부 극복된다",
+         "비영어 히트의 영어권 통과율은 평균 23.8% — 미스터리·스릴러·범죄(32~34%)는 벽이 낮고 코미디·로맨스(15~16%)는 높다.",
+         "비영어 원작 투자 심사에 장르별 영어권 통과율을 반영 — 긴밀감 장르는 베팅 가치가 높고, 코미디·로맨스는 더빙 품질 투자를 두 배로 하거나 영어 리메이크 등 우회 경로를 검토한다."),
+        ("시장 파워는 이동한다",
+         "멕시코 영향력 감소(16.6%→1.4%), 인도·브라질 부상, 동아시아의 2022년 이후 등장 — 시장 지도는 고정되지 않는다.",
+         "지속적 갱신 필요 — 반년 단위 파워 재추정으로 시장 우선순위를 갱신. 부상 시장은 현지 제작 투자 확대 신호로 읽는다."),
+        ("2단계 확산 예측 — 1주차 + 4주차",
+         "1주차 정밀도 0.85로 조기 판단, 4주차 0.87로 정밀 확인 — 조기 의사결정과 정밀 확인을 분리해 사용할 수 있다.",
+         "1주차 조기 판단 + 4주차 정밀 확인의 2단계 운영 — 첫 주 진입 국가 수·밀도를 시뮬레이터에 넣어 점수화하고, 마케팅 증폭·현지화 확장을 1주 안에 결정한다."),
+    ]
+    for i, (title, body, apply_) in enumerate(INSIGHTS, 1):
+        with st.container(border=True):
+            st.markdown(f":red[**{i}. {title}**]")
+            st.markdown(body)
+            st.markdown(f":gray[→ 실무 적용] {apply_}")
+    st.info("**한계** — 순위 데이터는 시청 시간의 세분량을 담지 않아 파워 추정은 순위 패턴 기반 구조적 추정이며, "
+            "상관관계와 인과관계는 구분된다 — 진입/확산이 글로벌 히트를 유발한다는 인과 증명이 아니라 경향성이다.")
