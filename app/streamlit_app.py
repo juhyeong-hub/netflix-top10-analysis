@@ -14,12 +14,8 @@ import hashlib
 import joblib
 import numpy as np
 import pandas as pd
+import altair as alt
 import streamlit as st
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-plt.rcParams["font.family"] = "Malgun Gothic"
-plt.rcParams["axes.unicode_minus"] = False
 
 ROOT = Path(__file__).resolve().parent.parent
 FIG = ROOT / "reports" / "figures"
@@ -149,6 +145,11 @@ div[data-testid="stProgress"] > div > div > div {
 /* 12. 차트 배경 (Altair/Plotly) */
 div[data-testid="stArrow"] { background-color: transparent !important; }
 div[data-testid="stVegaChart"] path[fill] { fill-opacity: 1; }
+[data-testid="stAppViewContainer"] [data-red="1"],
+[data-testid="stAppViewContainer"] [data-red="1"] * {
+    color: #e50914 !important;
+}
+[data-testid="stAppViewContainer"] :red { color: #e50914 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -257,26 +258,16 @@ with tab2:
                    "그 나라 시장이 글로벌 히트를 만든 것이 아니라 **글로벌 히트를 그대로 따라 본 것**입니다.\n\n"
                    "차트 순위를 시장 파워로 해석하기 전에 사분면 분류를 먼저 확인하세요.")
     st.markdown("### 블록 파워 vs 인구 (파워/인구 비율 = 시장 성숙도)")
-    bb2 = bb.sort_values("파워/인구비", ascending=True)
-    fig, ax = plt.subplots(figsize=(9, 5.4), dpi=140)
-    fig.patch.set_facecolor("#0b0b0b")
-    ax.set_facecolor("#0b0b0b")
-    colors = ["#e50914" if v >= 3 else "#888888" for v in bb2["파워/인구비"]]
-    ax.barh(range(len(bb2)), bb2["파워/인구비"], color=colors, height=0.62, zorder=3)
-    ax.set_yticks(range(len(bb2)))
-    ax.set_yticklabels(bb2["블록"], fontsize=10.5, color="#e5e5e5")
-    for i, v in enumerate(bb2["파워/인구비"]):
-        ax.text(v + 0.15, i, f"{v:.2f}", va="center", fontsize=9.5, fontweight="bold", color="#ffffff")
-    ax.set_xlabel("파워/인구비 — 인구 대비 넷플릭스 수요의 농도", fontsize=10, color="#b3b3b3")
-    ax.grid(axis="x", color="#333", zorder=0)
-    for sp in ["top", "right", "left"]:
-        ax.spines[sp].set_visible(False)
-    ax.spines["bottom"].set_color("#444")
-    ax.tick_params(left=False, bottom=False, colors="#e5e5e5")
-    fig.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
-    st.caption("레드 = 시장 성숙도 3.0 이상 (인구 대비 수요 농도가 높은 핵심 시장) · 값 = 파워/인구비")
+    bb2 = bb.sort_values("파워/인구비", ascending=False)
+    bbar = alt.Chart(bb2).mark_bar(color="#e50914").encode(
+        x=alt.X("파워/인구비:Q", title="파워/인구비 — 인구 대비 넷플릭스 수요의 농도"),
+        y=alt.Y("블록:N", sort="-x", title=None),
+        tooltip=[alt.Tooltip("블록:N", title="블록"),
+                 alt.Tooltip("파워/인구비:Q", format=".2f", title="파워/인구비"),
+                 alt.Tooltip("파워셰어:Q", format=".2%", title="파워셰어")],
+    )
+    st.altair_chart(bbar, use_container_width=True)
+    st.caption("레드 막대 = 파워/인구비 (시장 성숙도) — 인구 대비 수요 농도가 높은 시장일수록 긴 막대")
 
 
 # ================= 탭 3: 언어 장벽 =================
@@ -287,32 +278,23 @@ with tab3:
     st.caption(f"표본: 영어 출신 {en_n:,}편 / 비영어 출신 {ne_n:,}편 (합 {en_n+ne_n:,}편) — 영어·비영어 카테고리 혼합 작품과 국가 차트 미진입 작품은 제외")
     hm_wide = cmat.pivot(index="출신언어", columns="타깃시장", values="진입률")
     hm_wide = hm_wide[["영어권", "유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]]
-    mat = hm_wide.to_numpy(dtype=float)
-    ylabels = [f"{r} (표본 {int(cmat[cmat.출신언어 == r].표본.iloc[0]):,}편)" for r in hm_wide.index]
-    xlabels = list(hm_wide.columns)
-    fig, ax = plt.subplots(figsize=(9, 3.4), dpi=140)
-    fig.patch.set_facecolor("#0b0b0b")
-    ax.set_facecolor("#0b0b0b")
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("nf", ["#1a1a1a", "#7a0c12", "#e50914"])
-    im = ax.imshow(mat, cmap=cmap, aspect="auto", vmin=0, vmax=100)
-    ax.set_xticks(range(len(xlabels)))
-    ax.set_xticklabels(xlabels, fontsize=10, color="#e5e5e5")
-    ax.set_yticks(range(len(ylabels)))
-    ax.set_yticklabels(ylabels, fontsize=10.5, color="#e5e5e5")
-    for i in range(mat.shape[0]):
-        for j in range(mat.shape[1]):
-            v = mat[i, j]
-            ax.text(j, i, f"{v:.1f}%", ha="center", va="center", fontsize=11,
-                    fontweight="bold", color="#ffffff")
-    ax.set_xticks(np.arange(-0.5, len(xlabels), 1), minor=True)
-    ax.set_yticks(np.arange(-0.5, 2, 1), minor=True)
-    ax.grid(which="minor", color="#0b0b0b", lw=3)
-    ax.tick_params(which="both", length=0, colors="#e5e5e5")
-    for sp in ax.spines.values():
-        sp.set_visible(False)
-    fig.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
+    hm_long = hm_wide.reset_index().melt(id_vars="출신언어", var_name="타깃시장", value_name="진입률")
+    hm_long["표본"] = hm_long.출신언어.map({"영어": 1734, "비영어": 1824})
+    hbase = alt.Chart(hm_long).encode(
+        x=alt.X("타깃시장:N", sort=["영어권", "유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"],
+                axis=alt.Axis(labelColor="#e5e5e5", titleColor="#b3b3b3", labelFontSize=11)),
+        y=alt.Y("출신언어:N", sort=["영어", "비영어"],
+                axis=alt.Axis(labelColor="#e5e5e5", titleColor="#b3b3b3", labelFontSize=11.5)),
+        tooltip=[alt.Tooltip("출신언어:N", title="출신언어"),
+                 alt.Tooltip("타깃시장:N", title="타깃시장"),
+                 alt.Tooltip("진입률:Q", format=".1f", title="진입률 (%)"),
+                 alt.Tooltip("표본:Q", format=",", title="표본")],
+    )
+    hrect = hbase.mark_rect().encode(
+        color=alt.Color("진입률:Q", scale=alt.Scale(range=["#2a2a2a", "#7a0c12", "#e50914"]), legend=None))
+    htext = hbase.mark_text(fontSize=14, fontWeight="bold", color="#ffffff").encode(
+        text=alt.Text("진입률:Q", format=".1f"))
+    st.altair_chart((hrect + htext).properties(background="#0b0b0b"), use_container_width=True)
     st.caption("셀 값 = 그 시장 그룹 차트 진입률 (%) — 어두울수록 낮고 레드에 가까울수록 높다")
     m1, m2, m3 = st.columns(3)
     ne_en = cmat[(cmat.출신언어 == "비영어") & (cmat.타깃시장 == "영어권")].진입률.iloc[0]
@@ -436,20 +418,15 @@ with tab6:
     k2.metric("미러 리프트", f"{r['리프트(미러)']:.2f}", "높으면 글로벌 따라감")
     k3.metric("사분면", r.사분면)
     k4.metric("블록", r.블록)
-    if st.toggle("인구·파워/인구비 그래프 보기", value=False):
-        py = pop_y[pop_y.country_name == sel].iloc[0]
-        YEARS = [str(x) for x in range(2021, 2027)]
-        df1 = pd.DataFrame({"인구": [py[yv] for yv in YEARS]}, index=YEARS)
-        st.line_chart(df1, color="#e50914", height=250)
-        if "인구_2021_2025합" in py.index:
-            st.caption(f"2021~2025 누적 인구: {py.인구_2021_2025합:,.0f}")
-        st.caption("2021~2026 인구 (UN WPP)")
-        if f"파워/인구비_2021" in r.index:
-            dens = pd.DataFrame({"시장 밀도 (파워/인구)": [r[f"파워/인구비_{yv}"] for yv in YEARS]}, index=YEARS)
-            st.line_chart(dens, color="#e50914", height=220)
-            st.caption("연도별 시장 밀도 = 그 해 파워셰어 ÷ 그 해 인구셰어 — 1.0이면 인구 비중만큼 기여")
-            st.metric("파워/인구비 (2026년 기준)", f"{r['파워/인구비_2026']:.2f}",
-                      f"2021년 {r['파워/인구비_2021']:.2f} 대비 변화 {r['파워/인구비_2026'] - r['파워/인구비_2021']:+.2f}")
+    blk = r.블록
+    if blk in power_period.columns:
+        mv = power_period[[blk]].rename(columns={blk: "파워셰어 (%)"})
+        st.line_chart(mv, color="#e50914", height=260)
+        st.caption(f"선택 국가가 속한 블록 '{blk}'의 연도별 파워셰어 추이 — 그 시장의 파워 이동 (2021H2~2026H1)")
+    else:
+        st.caption("이 국가는 블록 단위 파워 추이 데이터가 없습니다.")
+    st.metric("파워/인구비 (2026년 기준)", f"{r['파워/인구비_2026']:.2f}",
+              f"2021년 {r['파워/인구비_2021']:.2f} 대비 변화 {r['파워/인구비_2026'] - r['파워/인구비_2021']:+.2f}")
 
 with tab4:
     st.markdown("### 모델 성능 — LightGBM v2.2 (최종 모델)")
@@ -526,7 +503,7 @@ with tab7:
             st.markdown(f"**{title}**")
             st.markdown(body)
             st.markdown(
-                f'<b>→ 실무 적용</b> {pre}<b><u style="color:#e50914; text-underline-offset:3px;">{red}</u></b>{post}',
+                f'<b>→ 실무 적용</b> {pre}<span data-red="1"><b><u style="text-underline-offset:3px;">{red}</u></b></span>{post}',
                 unsafe_allow_html=True)
     st.info("**한계** — 순위 데이터는 시청 시간의 세분량을 담지 않아 파워 추정은 순위 패턴 기반 구조적 추정이며, "
             "상관관계와 인과관계는 구분된다 — 진입/확산이 글로벌 히트를 유발한다는 인과 증명이 아니라 경향성이다.")
