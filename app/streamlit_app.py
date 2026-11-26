@@ -236,10 +236,8 @@ with tab1:
 # ================= 탭 2: 시장 파워 & 미러 =================
 with tab2:
     st.markdown("### 블록/국가별 파워")
-    st.caption("글로벌 시청시간에 기여하는 각 시장의 절대 가중치 — 미러 시장은 자동으로 0에 수렴")
-    st.caption("📌 미국·인도·브라질·멕시코·캐나다는 혼자서도 시장인 나라라 개별 분리, "
-               "남미 기타·동아시아·유럽 기타는 취향이 비슷한 나라끼리 묶었습니다. "
-               "큰 나라와 작은 나라를 묶으면 큰 나라의 파워가 희석되므로, 혼자 서는 시장은 분리하는 것이 정확합니다.")
+    st.caption("미러 시장은 0에 수렴")
+    st.caption("혼자 서는 시장은 분리, 나머지는 취향끼리 묶음")
     bb = blocks.sort_values("파워셰어", ascending=False)
     st.bar_chart(bb.set_index("블록")[["파워셰어"]], height=380, color="#e50914")
     col1, col2 = st.columns([2, 1])
@@ -272,7 +270,7 @@ with tab2:
         x=alt.X("기간:N", sort=porder), y="파워셰어:Q", text=alt.Text("파워셰어:Q", format=".1f"),
         color=alt.Color("블록:N", scale=alt.Scale(domain=list(palette), range=[palette[b] for b in palette]), legend=None))
     st.altair_chart((line + labels).properties(background="#0b0b0b"), use_container_width=True)
-    st.caption("연도별 블록 파워셰어 추이 (%) — 미국은 누적 1위지만 2026H1엔 인도·브라질·동아시아에 밀려 4위(13.4%)")
+    st.caption("미국 누적 1위 → 2026H1 4위(13.4%)")
 
     st.markdown("### 블록 파워 vs 인구 (파워/인구 비율 = 시장 성숙도)")
     bb2 = bb.sort_values("파워/인구비", ascending=False)
@@ -284,15 +282,15 @@ with tab2:
                  alt.Tooltip("파워셰어:Q", format=".2%", title="파워셰어")],
     )
     st.altair_chart(bbar, use_container_width=True)
-    st.caption("레드 막대 = 파워/인구비 (시장 성숙도) — 인구 대비 수요 농도가 높은 시장일수록 긴 막대")
+    st.caption("파워/인구비 — 인구 대비 수요 농도")
 
 
 # ================= 탭 3: 언어 장벽 =================
 with tab3:
-    st.caption("글로벌 히트 3,585편 중 영어·비영어 카테고리 혼합 8편 + 국가 차트 미진입 19편을 제외한 3,558편 기준 — 영어권 정의: 모국어 시장 6개국 (미국·영국·캐나다·호주·아일랜드·뉴질랜드)")
+    st.caption("3,558편 · 영어권 = 모국어 시장 6개국")
     en_n = int(cmat[cmat.출신언어 == "영어"].표본.iloc[0])
     ne_n = int(cmat[cmat.출신언어 == "비영어"].표본.iloc[0])
-    st.caption(f"표본: 영어 출신 {en_n:,}편 / 비영어 출신 {ne_n:,}편 (합 {en_n+ne_n:,}편) — 영어·비영어 카테고리 혼합 작품과 국가 차트 미진입 작품은 제외")
+    st.caption(f"영어 {en_n:,}편 / 비영어 {ne_n:,}편")
     hm_wide = cmat.pivot(index="출신언어", columns="타깃시장", values="진입률")
     hm_wide = hm_wide[["영어권", "유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]]
     hm_long = hm_wide.reset_index().melt(id_vars="출신언어", var_name="타깃시장", value_name="진입률")
@@ -312,7 +310,7 @@ with tab3:
     htext = hbase.mark_text(fontSize=14, fontWeight="bold", color="#ffffff").encode(
         text=alt.Text("진입률:Q", format=".1f"))
     st.altair_chart((hrect + htext).properties(background="#0b0b0b"), use_container_width=True)
-    st.caption("셀 값 = 그 시장 그룹 차트 진입률 (%) — 어두울수록 낮고 레드에 가까울수록 높다")
+    st.caption("진입률 (%)")
     m1, m2, m3 = st.columns(3)
     ne_en = cmat[(cmat.출신언어 == "비영어") & (cmat.타깃시장 == "영어권")].진입률.iloc[0]
     NE_TARGETS = ["유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]
@@ -321,7 +319,7 @@ with tab3:
     m2.metric("영어 히트 → 비영어권 평균", f"{en_ne:.1f}%", "비영어 5개 시장 그룹 평균")
     m3.metric("영어권 전용 데뷔의 히트율", "19.4%", "다중 대륙 데뷔는 82.0%")
     st.markdown("### 비영어 히트의 장르별 영어권 통과율")
-    st.caption("긴밀감 장르(스릴러·미스터리·범죄)는 잘 통과하고, 유머·음악·애니메이션은 벽이 높습니다")
+    st.caption("스릴러·범죄는 통과율 높고 코미디·음악은 낮다")
     genre_c_bar = pd.read_csv(ROOT / "data/processed/language_barrier_by_genre.csv").set_index("장르")
     genre_c_bar = genre_c_bar.rename(index=GENRE_KO)
     st.bar_chart(genre_c_bar["영어권진입률"], height=380, color="#e50914")
@@ -332,14 +330,11 @@ with tab5:
                     horizontal=True, index=0)
     snap_key = "1주차" if "1주" in snap else "4주차"
     if snap_key == "1주차":
-        st.info("**1주차 = 배포 직후 조기 판단용.** 정밀도 0.85(4주차 0.87 대비 약간 낮음) — 잘못된 베팅 위험이 조금 더 크지만, "
-                "마케팅 증폭·현지화 결정을 데뷔 1주 만에 할 수 있습니다. 회귀 오차도 ±5.0개국으로 넓음.")
+        st.info("1주차 = 조기 판단용. 정밀도 0.85, 회귀 오차 ±5.0개국")
     else:
-        st.info("**4주차 = 한 달 관찰 후 재판단용.** 정밀도 0.87, 확산 오차 ±2.8개국 — 정확하지만 의사결정이 3주 늦어집니다. "
-                "점진 확산형(1주차에 못 잡힌 작품)을 잡는 보완 시점.")
-    st.caption("💡 진입 국가가 적으면(특히 5개국 이하) 확률의 신뢰 구간이 넓습니다 — 국가를 추가·제거하며 상대 비교하는 용도로 사용하세요.")
-    st.caption("📌 미국 단독 데뷔보다 여러 나라 동시 데뷔가 글로벌 히트율이 높습니다 — 넷플릭스가 배포 범위를 넓힐수록 확산 확률이 올라가는 구조입니다. "
-               "이 모델은 **상대 비교와 전략 시뮬레이션** 용도이며, 확률 절대값을 단독으로 신뢰하는 것은 위험할 수 있습니다.")
+        st.info("4주차 = 정밀 확인용. 정밀도 0.87, 확산 오차 ±2.8개국")
+    st.caption("상대 비교용")
+    st.caption("상대 비교용")
     ALL_COUNTRIES = sorted(power.country.unique())
     mode = st.radio("선택 방식", ["국가 선택 (정밀)", "대륙 선택 (빠름)"], horizontal=True)
 
@@ -439,7 +434,7 @@ with tab6:
     if blk in power_period.index:
         mv = power_period.loc[blk].to_frame(name="파워셰어 (%)")
         st.line_chart(mv, color="#e50914", height=260)
-        st.caption(f"선택 국가가 속한 블록 '{blk}'의 연도별 파워셰어 추이 — 그 시장의 파워 이동 (2021H2~2026H1)")
+        st.caption(f"{blk} 파워 이동")
     else:
         st.caption("이 국가는 블록 단위 파워 추이 데이터가 없습니다.")
     st.metric("파워/인구비 (2026년 기준)", f"{r['파워/인구비_2026']:.2f}",
@@ -447,7 +442,7 @@ with tab6:
 
 with tab4:
     st.markdown("### 모델 성능 — LightGBM v2.2 (최종 모델)")
-    st.caption("검증: 2021-07-04 ~ 2026-03-14까지 데이터로 학습 (완결 작품 9,936편) → 2026-03-15 ~ 11-15 신작 1,443편으로 평가 (35주 시간 분할)")
+    st.caption("학습 9,936편 → 테스트 1,443편 (35주 분할)")
 
     st.markdown("#### 📊 지표 정의")
     st.markdown("""
@@ -464,17 +459,17 @@ with tab4:
     st.markdown("#### 📊 1주차 성능 (조기 판단용)")
     one = dens_res[(dens_res.스냅샷 == "1주차") & (dens_res.target != "국가수")].drop(columns=["MSE(Brier)"])
     st.dataframe(one, hide_index=True, height=140)
-    st.caption("MAE 5.0개국 / R² 0.861 (릿지회귀, 최종 국가 수)")
+    st.caption("MAE 5.0개국")
 
     st.markdown("#### 📊 4주차 성능 (정밀 확인)")
     four = dens_res[(dens_res.스냅샷 == "4주차") & (dens_res.target != "국가수")].drop(columns=["MSE(Brier)"])
     st.dataframe(four, hide_index=True, height=140)
-    st.caption("MAE 2.78개국 / R² 0.955 (릿지회귀, 최종 국가 수)")
+    st.caption("MAE 2.78개국")
 
     st.image(str(FIG / "15_shap_35week.png"), caption="v2.2 SHAP 요약 — 진입시장밀도합이 4위에 등장", width=520)
 
     st.markdown("### 인구가 원인인가? — 소거 실험")
-    st.caption("같은 데이터·검증으로 '인구 피처 포함 vs 미포함' 두 모델을 비교한 표")
+    st.caption('인구 피처 소거 실험')
     st.dataframe(ablation, hide_index=True)
     st.markdown("""
 **이 실험이 말하는 것**: 인구 피처를 넣어도 AUC +0.9pp(미미), 회귀는 불변.
@@ -494,7 +489,7 @@ st.sidebar.markdown("""
 # ================= 탭 7: 인사이트 =================
 with tab7:
     st.markdown("### 핵심 인사이트")
-    st.caption("보고서 05 인사이트 섹션 기반 — 각 인사이트의 실무 적용까지 정리")
+    st.caption("보고서 인사이트 기반")
     INSIGHTS = [
         ("미국 단독 진입은 최선이 아니다",
          "영어권 전용 데뷔의 글로벌 히트율은 19.4%, 다중 대륙 동시 데뷔는 82.0% — 배포 범위를 넓힐수록 확산 확률이 올라가는 구조다.",
