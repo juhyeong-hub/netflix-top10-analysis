@@ -215,6 +215,7 @@ POWER_DF = power.set_index("country")
 PWR = (POWER_DF.나라파워셰어 * 1000).to_dict()
 POP24 = POWER_DF.인구2024.to_dict()
 DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+MIRROR_SET = set(POWER_DF.index[POWER_DF["사분면"] == "순수미러"])
 
 st.title("🎬 Netflix Top 10 글로벌 확산 분석")
 st.caption("데이터: 넷플릭스 글로벌/94개국 주간 Top 10 (2021-07-04 ~ 2026-11-15, 281주) · 인구: UN WPP 2024 · 장르: IMDb+JustWatch (커버 99.7%)")
@@ -333,9 +334,8 @@ with tab5:
         st.info("1주차 = 조기 판단용. 정밀도 0.85, 회귀 오차 ±5.0개국")
     else:
         st.info("4주차 = 정밀 확인용. 정밀도 0.87, 확산 오차 ±2.8개국")
-    st.caption("상대 비교용")
-    st.caption("상대 비교용")
-    ALL_COUNTRIES = sorted(power.country.unique())
+    st.caption("상대 비교용 — 순수 미러 41개국(바레인·카타르 등)은 글로벌 히트를 따라 보는 시장이라 예측 근거가 없어 선택에서 제외했다.")
+    ALL_COUNTRIES = sorted(c for c in power.country.unique() if c not in MIRROR_SET)
     mode = st.radio("선택 방식", ["국가 선택 (정밀)", "대륙 선택 (빠름)"], horizontal=True)
 
     if mode == "국가 선택 (정밀)":
@@ -351,8 +351,8 @@ with tab5:
                "유럽": ["United Kingdom", "France", "Germany", "Spain", "Italy", "Netherlands", "Sweden"],
                "아프리카": ["Nigeria", "South Africa", "Kenya", "Egypt", "Morocco"],
                "오세아니아": ["Australia", "New Zealand", "New Caledonia"]}
-        # 선택한 대륙의 전체 국가를 후보로 표시 — 사용자가 직접 골라서 선택
-        available = [c for k in entered for c in per[k]]
+        # 선택한 대륙의 전체 국가를 후보로 표시 — 사용자가 직접 골라서 선택 (미러 국가 제외)
+        available = [c for k in entered for c in per[k] if c not in MIRROR_SET]
         sel_countries = st.multiselect(f"진입 국가 (선택한 대륙: {', '.join(entered)})", available,
                                        default=available[:5],
                                        format_func=lambda c: KO.get(c, c))
