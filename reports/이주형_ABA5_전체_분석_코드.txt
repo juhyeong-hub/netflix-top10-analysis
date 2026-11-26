@@ -1,0 +1,3567 @@
+======================================================================
+넷플릭스 Top 10 분석 — 전체 분석 코드 모음
+
+분석 흐름 순서:
+① 1차 탐색(29주) → ② 검증 원형 → ③ 기초 모델 B·C·A → ④ 데이터 확장(281주)
+→ ⑤ 확장 EDA → ⑥ 장르 보완 → ⑦ 언어 장벽 → ⑧ 시장 파워·미러
+→ ⑨ LightGBM → ⑩ 확률 보정·SHAP → ⑪ 데뷔 유형
+======================================================================
+
+
+======================================================================
+  📓 eda
+  (1차 탐색 — 구형 29주 기초 검진)
+======================================================================
+
+  ── [설명] ──
+  # Netflix Top 10 Weekly Dataset — EDA
+  
+  기간: 2021-07-04 ~ 2022-01-16 (29주) · 컬럼 정의는 `references/data_dictionary.md` 참고
+  
+  **순서**: 데이터 구조 → 1.결측치 → 2.이상치/범위 → 3.분포/불균형 → 4.상관관계
+  
+  그림은 `reports/figures/`에 저장됩니다.
+
+  ── [코드] ──
+  # Netflix Top 10 Weekly - EDA
+  # 데이터: data/raw (원본, 수정 금지) | 그림 저장: reports/figures
+  
+  from pathlib import Path
+  import pandas as pd
+  import numpy as np
+  import matplotlib
+  import matplotlib.pyplot as plt
+  import matplotlib.ticker as mticker
+  import seaborn as sns
+  from scipy import stats
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  FIG = ROOT / "reports" / "figures"
+  FIG.mkdir(parents=True, exist_ok=True)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  sns.set_style("whitegrid")
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  
+  # countries는 cp1252 인코딩 (references/data_dictionary.md 참고)
+  world = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", parse_dates=["week"])
+  country = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  print(world.shape, country.shape)
+  world.head()
+
+  ── [코드] ──
+  # 데이터 구조 요약
+  print("world  :", world.shape, "| 주:", world.week.nunique(), "| 카테고리:", world.category.nunique(), "| 작품:", world.show_title.nunique())
+  print("country:", country.shape, "| 국가:", country.country_name.nunique(), "| 카테고리:", country.category.nunique(), "| 작품:", country.show_title.nunique())
+  print()
+  print("world 행 구성:", world.category.value_counts().to_dict())
+  print("country 행 구성:", country.category.value_counts().to_dict())
+
+  ── [설명] ──
+  ## 1. 결측치의 비율과 위치
+
+  ── [코드] ──
+  # 1. 결측치 비율과 위치
+  print(world.isna().sum()[lambda s: s > 0], "\n")
+  print(country.isna().sum()[lambda s: s > 0], "\n")
+  
+  # 위치: season_title 결측은 영화(시즌 없음)에서 발생한 구조적 결측
+  w_t = world[world.category.str.startswith("TV")]
+  c_t = country[country.category == "TV"]
+  print("world  TV 중 season_title 결측:", w_t.season_title.isna().sum(), "행 ->", sorted(w_t[w_t.season_title.isna()].show_title.unique()))
+  print("country TV 중 season_title 결측:", c_t.season_title.isna().sum(), "행 ->", c_t[c_t.season_title.isna()].show_title.nunique(), "개 작품")
+  
+  fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
+  vals = [100.0, 100.0, w_t.season_title.isna().mean() * 100, 0.0]
+  axes[0].bar(["Films(EN)", "Films(non-EN)", "TV(EN)", "TV(non-EN)"], vals, color="#e50914")
+  axes[0].set_title("[world] season_title 결측 비율(%) - 카테고리별")
+  for i, v in enumerate(vals):
+      axes[0].text(i, v + 2, f"{v:.1f}%", ha="center", fontsize=9)
+  vals2 = [100.0, c_t.season_title.isna().mean() * 100]
+  axes[1].bar(["Films", "TV"], vals2, color="#e50914")
+  axes[1].set_title("[country] season_title 결측 비율(%) - 카테고리별")
+  for i, v in enumerate(vals2):
+      axes[1].text(i, v + 2, f"{v:.1f}%", ha="center", fontsize=9)
+  caption = ("실제 결측이 아님: 영화는 시즌(시리즈)이 없어 원본 CSV의 'N/A' 표시가 NaN으로 읽힌 구조적 결측 -> "
+             "별도 처리 없이 유지해도 무방")
+  fig.text(0.5, 0.005, caption, ha="center", va="bottom", fontsize=10, color="#333333")
+  plt.tight_layout(rect=[0, 0.07, 1, 1])
+  plt.savefig(FIG / "01_missing.png", dpi=130)
+  plt.show()
+
+  ── [설명] ──
+  ## 2. 이상치와 값의 범위
+
+  ── [코드] ──
+  # 2. 이상치와 값의 범위
+  h = world.weekly_hours_viewed
+  q1, q3 = h.quantile(0.25), h.quantile(0.75)
+  hi = q3 + 1.5 * (q3 - q1)
+  out = world[h > hi]
+  print(f"범위: {h.min():,} ~ {h.max():,} 시간 | IQR 상한: {hi:,.0f} | 이상치: {len(out)}행 ({len(out)/len(world)*100:.1f}%)")
+  print(out[["week", "category", "show_title", "weekly_hours_viewed", "weekly_rank"]].nlargest(5, "weekly_hours_viewed").to_string(index=False))
+  
+  fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
+  axes[0].hist(h, bins=40, color="#e50914", edgecolor="white")
+  axes[0].axvline(hi, color="black", ls="--", lw=1)
+  axes[0].text(hi * 1.05, axes[0].get_ylim()[1] * 0.9, "IQR 상한\n약 4,000만", fontsize=9)
+  axes[0].xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, p: "0" if v == 0 else f"{v/1e8:g}억"))
+  axes[0].set_title("[world] weekly_hours_viewed 분포")
+  axes[0].set_xlabel("주간 시청시간 (억 시간)")
+  axes[0].set_ylabel("행 수")
+  sns.boxplot(x=h, ax=axes[1], color="#e50914")
+  axes[1].xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, p: "0" if v == 0 else f"{v/1e8:g}억"))
+  axes[1].set_xlabel("주간 시청시간 (억 시간)")
+  axes[1].set_title("[world] weekly_hours_viewed boxplot (IQR 이상치 = 점)")
+  plt.tight_layout()
+  plt.savefig(FIG / "02_outliers.png", dpi=130)
+  plt.show()
+
+  ── [코드] ──
+  # 2b. 대안 시각화: 히트맵(카테고리 x 순위) + 밀도 곡선
+  cats = ["Films (English)", "Films (Non-English)", "TV (English)", "TV (Non-English)"]
+  pv = (world.groupby(["category", "weekly_rank"]).weekly_hours_viewed.median()
+        .unstack("weekly_rank").loc[cats])
+  fmt = lambda v: f"{v/1e8:.1f}억" if v >= 1e8 else f"{v/1e4:,.0f}만"
+  
+  fig, axes = plt.subplots(1, 2, figsize=(14.5, 4.8), gridspec_kw={"width_ratios": [1.15, 1]})
+  sns.heatmap(pv, ax=axes[0], cmap="Reds", annot=pv.map(fmt).values, fmt="",
+              norm=matplotlib.colors.LogNorm(vmin=pv.values.min(), vmax=pv.values.max()),
+              linewidths=0.5, linecolor="white",
+              cbar_kws={"label": "중앙값 주간 시청시간 (시간, 로그 색)"})
+  axes[0].set_title("카테고리 × 순위별 주간 시청시간 (중앙값, 히트맵)")
+  axes[0].set_xlabel("주간 순위")
+  axes[0].tick_params(axis="y", rotation=0)
+  
+  med = h.median()
+  sns.kdeplot(x=h, log_scale=True, fill=True, color="#e50914", ax=axes[1])
+  for v, ls, lab in [(q1, ":", f"Q1 {fmt(q1)}"), (med, "-", f"중앙값 {fmt(med)}"),
+                     (q3, ":", f"Q3 {fmt(q3)}"), (hi, "--", f"IQR 상한 {fmt(hi)}")]:
+      axes[1].axvline(v, color="#333333", ls=ls, lw=1.2, label=lab)
+  axes[1].set_xlim(4e5, 1.2e9)
+  axes[1].xaxis.set_major_locator(mticker.FixedLocator([1e6, 1e7, 1e8]))
+  axes[1].xaxis.set_major_formatter(mticker.FixedFormatter(["100만", "1,000만", "1억"]))
+  axes[1].xaxis.set_minor_formatter(mticker.NullFormatter())
+  axes[1].set_xlabel("주간 시청시간 (시간, 로그 축)")
+  axes[1].set_ylabel("밀도")
+  axes[1].set_title("weekly_hours_viewed 밀도 곡선 (선)")
+  axes[1].legend(fontsize=8.5)
+  plt.tight_layout()
+  plt.savefig(FIG / "02b_hours_alt.png", dpi=130)
+  plt.show()
+
+  ── [설명] ──
+  ## 3. 대상 변수의 분포와 클래스 불균형 (target = `weekly_rank` 가정)
+
+  ── [코드] ──
+  # 3. 대상 변수의 분포와 클래스 불균형 (target = weekly_rank 가정)
+  print("weekly_rank 분포 (world):", world.weekly_rank.value_counts().sort_index().to_dict())
+  print("weekly_rank 분포 (country):", country.weekly_rank.value_counts().sort_index().to_dict())
+  print("category (world):", world.category.value_counts().to_dict())
+  
+  freq = world.show_title.value_counts()
+  print(f"고유 작품 {len(freq)}편 중 1주만 등장: {(freq == 1).sum()}편 ({(freq == 1).mean()*100:.1f}%) | 10주+ 롱런: {(freq >= 10).sum()}편 ({(freq >= 10).mean()*100:.1f}%)")
+  
+  fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
+  world.weekly_rank.value_counts().sort_index().plot.bar(ax=axes[0], color="#e50914")
+  axes[0].set_title("[world] weekly_rank 분포 (균등)")
+  world.category.value_counts().plot.bar(ax=axes[1], color="#221f1f")
+  axes[1].set_title("[world] category 분포 (균등)")
+  axes[1].tick_params(axis="x", rotation=20)
+  axes[2].hist(freq, bins=20, color="#e50914", edgecolor="white")
+  axes[2].set_title("[world] 작품별 등장 주 수 (고유 401편)")
+  axes[2].set_xlabel("등장 주 수")
+  plt.tight_layout()
+  plt.savefig(FIG / "03_target.png", dpi=130)
+  plt.show()
+
+  ── [설명] ──
+  ## 4. 변수 사이의 상관관계
+
+  ── [코드] ──
+  # 4. 변수 사이의 상관관계
+  num_w = world[["weekly_rank", "weekly_hours_viewed", "cumulative_weeks_in_top_10"]]
+  num_c = country[["weekly_rank", "cumulative_weeks_in_top_10"]]
+  print("[world] Pearson:")
+  print(num_w.corr().round(3), "\n")
+  print("[country] Pearson:")
+  print(num_c.corr().round(3), "\n")
+  r, p = stats.pearsonr(world.weekly_rank, world.weekly_hours_viewed)
+  print(f"rank ~ hours: r={r:.3f} (p={p:.1e}) -> 순위 숫자가 커질수록(1위->10위) 시청시간 감소 = 순위가 좋을수록 시청시간 많음")
+  
+  fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
+  sns.heatmap(num_w.corr(), annot=True, fmt=".3f", cmap="RdBu_r", vmin=-1, vmax=1, ax=axes[0], square=True)
+  axes[0].set_title("[world] 수치형 상관관계")
+  sns.heatmap(num_c.corr(), annot=True, fmt=".3f", cmap="RdBu_r", vmin=-1, vmax=1, ax=axes[1], square=True)
+  axes[1].set_title("[country] 수치형 상관관계")
+  caption = ("음의 상관(r=-0.418)의 의미: 순위 숫자가 커질수록(1위->10위로 밀릴수록) 시청시간이 줄어듦 -> "
+             "실질적으로는 '순위가 좋을수록 시청시간이 많다'는 양의 관계")
+  fig.text(0.5, 0.005, caption, ha="center", va="bottom", fontsize=10, color="#333333")
+  plt.tight_layout(rect=[0, 0.06, 1, 1])
+  plt.savefig(FIG / "04_corr.png", dpi=130)
+  plt.show()
+
+
+
+======================================================================
+  📓 model-validation
+  (시간 분할 검증 — 무작위 분할이 아닌 과거→미래 검증 원형)
+======================================================================
+
+  ── [설명] ──
+  # 모델 검증 — 시간 기반 train/test 분리
+  
+  **모델 C/A의 성능이 '미래 신작'에도 유지되는가**를 확인하는 노트북입니다.
+  
+  - 분할: 작품별 첫 Top 10 진입일 기준 (2021-11-01 컷) — 무작위 분할과 달리 시간의 흐름을 반영
+  - 산출물: `data/interim/title_time_split.csv`(분할 구성표), `data/processed/model_validation_time_split.csv`(검증 결과)
+
+  ── [코드] ──
+  # 모델 검증: 시간 기반 train/test 분리
+  # 설계: 작품별 "첫 Top 10 진입일" 기준. 2021-11-01 이전 진입(과거) = 학습, 이후 진입(신작) = 테스트
+  # 실무 시나리오 "미래 신작 예측"에 가장 가까운 평가 방식
+  
+  from pathlib import Path
+  import pandas as pd
+  import numpy as np
+  from sklearn.linear_model import LogisticRegression, Ridge
+  from sklearn.metrics import roc_auc_score, mean_absolute_error, r2_score
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  
+  cm = pd.read_csv(ROOT / "references/country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  c = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  w = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", parse_dates=["week"])
+  pres = pd.read_csv(ROOT / "data/processed/title_continent_presence.csv")
+  c["대륙"] = c.country_name.map(CONT)
+  
+  first = c.groupby("show_title").week.min().rename("first_week")
+  c = c.merge(first, on="show_title")
+  c["offset_wk"] = ((c.week - c.first_week).dt.days // 7).astype(int)
+  cat = c.groupby("show_title").category.agg(lambda s: s.mode()[0]).rename("category")
+  first_cont = c.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = c.show_title.unique()
+
+  ── [코드] ──
+  # 발자국 스냅샷 생성 (작품별 첫 진입 후 경과 t주까지의 누적 정보)
+  def snapshot(t):
+      sub = c[c.offset_wk < t]
+      g = sub.groupby("show_title")
+      f = pd.DataFrame(index=pd.Index(titles, name="show_title"))
+      f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat.reindex(f.index) == "TV").astype(int)
+      return f
+
+  ── [설명] ──
+  ## 1. 시간 분할 구성표
+
+  ── [코드] ──
+  # 시간 분할 + 분할 구성표 저장
+  CUT = pd.Timestamp("2021-11-01")
+  first_map = first.reindex(titles)
+  is_late = (first_map >= CUT).to_numpy()
+  
+  y_global = np.array([t in set(w.show_title.unique()) for t in titles], dtype=int)
+  y_reach = pres.groupby("show_title").등장국가수.max().reindex(titles).to_numpy().astype(float)
+  
+  split = pd.DataFrame({"show_title": titles, "first_week": first_map.to_numpy(),
+                        "구간": np.where(is_late, "테스트(11월 이후 신작)", "학습(10월 이전)"),
+                        "글로벌히트여부": y_global, "최종진입국가수": y_reach})
+  split.to_csv(ROOT / "data/interim/title_time_split.csv", index=False, encoding="utf-8-sig")
+  print(f"학습 {(~is_late).sum()}편 / 테스트 {is_late.sum()}편 -> data/interim/title_time_split.csv 저장")
+
+  ── [설명] ──
+  ## 2. 검증 실행 (분류 AUC / 회귀 MAE·R²)
+
+  ── [코드] ──
+  # 시간 기반 검증 실행 (스냅샷 1주차/4주차)
+  rows = []
+  for t in [1, 4]:
+      X = snapshot(t).to_numpy().astype(float)
+      clf = LogisticRegression(max_iter=3000, C=1.0, class_weight="balanced").fit(X[~is_late], y_global[~is_late])
+      p = clf.predict_proba(X[is_late])[:, 1]
+      rg = Ridge(alpha=1.0).fit(X[~is_late], y_reach[~is_late])
+      pr = np.clip(rg.predict(X[is_late]), 0, 94)
+      rows.append({"스냅샷": f"{t}주차",
+                   "분류_AUC": round(roc_auc_score(y_global[is_late], p), 3),
+                   "회귀_MAE_개국": round(mean_absolute_error(y_reach[is_late], pr), 2),
+                   "회귀_R2": round(r2_score(y_reach[is_late], pr), 3),
+                   "테스트편수": int(is_late.sum())})
+  res = pd.DataFrame(rows)
+  res.to_csv(ROOT / "data/processed/model_validation_time_split.csv", index=False, encoding="utf-8-sig")
+  print("=== 시간 기반 검증 결과 (과거 학습 -> 신작 테스트) ===")
+  print(res.to_string(index=False))
+  print("-> data/processed/model_validation_time_split.csv 저장")
+  print()
+  print("(비교) 무작위 5-fold CV: 4주차 분류 AUC 0.905, 회귀 R2 0.898")
+  print("해석: 시간 분할에서도 성능이 유지되어 미래 신작에 대한 일반화 가능")
+
+
+
+======================================================================
+  📓 modeling
+  (기초 모델 B·C·A — 취향 지도 · 시장 편향 · 확산 예측)
+======================================================================
+
+  ── [설명] ──
+  # 모델링 — 취향 지도(B) · 시장 편향(C) · 확산 예측(A)
+  
+  앞서 발견한 인사이트를 세 개의 기초 모델로 구축하는 노트북입니다.
+  
+  - **B**: 국가 간 취향 유사도 -> 클러스터 지도 + 대륙 간 확산 후보 추천 (탐색 기법)
+  - **C**: 로지스틱 회귀로 나라별 영향력 정량화 (설명적 모델링)
+  - **A**: 초기 발자국 -> 글로벌 히트/6대륙 도달 분류 + 진입 국가 수 회귀 (예측적 모델링)
+  - 학습된 모델은 `models/`에 joblib으로 저장됩니다
+
+  ── [코드] ──
+  from pathlib import Path
+  import pandas as pd
+  import numpy as np
+  import matplotlib
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  import joblib
+  from sklearn.linear_model import LogisticRegression, Ridge
+  from sklearn.model_selection import StratifiedKFold, KFold
+  from sklearn.metrics import (roc_auc_score, accuracy_score, precision_score, recall_score,
+                               f1_score, mean_absolute_error, mean_squared_error, r2_score)
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  FIG = ROOT / "reports" / "figures"
+  FIG.mkdir(parents=True, exist_ok=True)
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  
+  cm = pd.read_csv(ROOT / "references/country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  
+  c = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  w = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", parse_dates=["week"])
+  pres = pd.read_csv(ROOT / "data/processed/title_continent_presence.csv")
+  c["대륙"] = c.country_name.map(CONT)
+  first = c.groupby("show_title").week.min().rename("first_week")
+  c = c.merge(first, on="show_title")
+  c["offset_wk"] = ((c.week - c.first_week).dt.days // 7).astype(int)
+  cat = c.groupby("show_title").category.agg(lambda s: s.mode()[0]).rename("category")
+  first_cont = c.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = c.show_title.unique()
+  
+  y_global = np.array([t in set(w.show_title.unique()) for t in titles], dtype=int)
+  y_six = np.array([t in set(pres.groupby("show_title").등장대륙수.max().loc[lambda s: s == 6].index)
+                    for t in titles], dtype=int)
+  y_reach = pres.groupby("show_title").등장국가수.max().reindex(titles).to_numpy().astype(float)
+  print(f"작품 {len(titles)}편 | 글로벌 히트 {y_global.sum()}편 | 6대륙 도달 {y_six.sum()}편")
+  
+  def snapshot(t):
+      """작품별 첫 진입 후 t주까지의 발자국 (1주차/4주차 등 시나리오 피처)"""
+      sub = c[c.offset_wk < t]
+      g = sub.groupby("show_title")
+      f = pd.DataFrame(index=pd.Index(titles, name="show_title"))
+      f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat.reindex(f.index) == "TV").astype(int)
+      return f
+
+  ── [설명] ──
+  ## 모델 B — 국가 취향 지도
+
+  ── [코드] ──
+  ## 모델 B-1: 작품 x 국가 행렬 -> 국가 간 취향 유사도 클러스터 지도
+  M = c.pivot_table(index="show_title", columns="country_name", values="week", aggfunc="nunique").fillna(0)
+  countries = list(M.columns)
+  X = M.to_numpy().T                      # 국가 x 작품 (가중치 = 머문 주 수)
+  norms = np.linalg.norm(X, axis=1, keepdims=True)
+  Xn = X / np.where(norms == 0, 1, norms)
+  S = pd.DataFrame(Xn @ Xn.T, index=countries, columns=countries)   # 94x94 코사인 유사도
+  
+  g = sns.clustermap(S, cmap="Reds", vmin=0, vmax=1, figsize=(15, 13),
+                     linewidths=0, xticklabels=True, yticklabels=True)
+  g.ax_heatmap.tick_params(labelsize=5)
+  g.figure.suptitle("국가별 취향 유사도 클러스터 지도", y=1.01, fontsize=13)
+  g.savefig(FIG / "05_taste_clustermap.png", dpi=130)
+  plt.close("all")
+  print("저장: 05_taste_clustermap.png")
+  print("핵심 클러스터: (1) 서양+중동+아프리카 연합(브라질 포함) (2) 동·남아시아 (3) 라틴 블록")
+
+  ── [코드] ──
+  ## 모델 B-2: 대륙 간 유사도 + 서양/동양 겹침 분석
+  cont_of = {k: CONT[k] for k in countries}
+  cmean = S.copy()
+  cmean.index = [cont_of[k] for k in cmean.index]
+  cmean.columns = [cont_of[k] for k in cmean.columns]
+  C = cmean.groupby(level=0).mean()
+  C = C.T.groupby(level=0).mean().T.reindex(index=ORDER, columns=ORDER)
+  
+  fig, ax = plt.subplots(figsize=(8, 6.5))
+  sns.heatmap(C, annot=True, fmt=".2f", cmap="Reds", square=True, ax=ax)
+  ax.set_title("대륙 간 취향 유사도")
+  plt.tight_layout()
+  plt.savefig(FIG / "06_continent_similarity.png", dpi=130)
+  plt.close()
+  
+  Sv = S.to_numpy()
+  w_idx = [countries.index(k) for k in countries if cont_of[k] in ("유럽", "북중미", "오세아니아")]
+  a_idx = [countries.index(k) for k in countries if cont_of[k] == "아시아"]
+  iu = ~np.eye(len(w_idx), dtype=bool); ju = ~np.eye(len(a_idx), dtype=bool)
+  print(f"서양 내부 유사도 {Sv[np.ix_(w_idx, w_idx)][iu].mean():.3f} | 아시아 내부 {Sv[np.ix_(a_idx, a_idx)][ju].mean():.3f} | 서양-아시아 {Sv[np.ix_(w_idx, a_idx)].mean():.3f}")
+  bridge = S.iloc[a_idx].mean(axis=1).sort_values(ascending=False)
+  print("서양과 가장 겹치는 아시아 국가(브리지):", ", ".join(f"{k}({v:.3f})" for k, v in bridge.head(5).items()))
+  print("저장: 06_continent_similarity.png")
+
+  ── [코드] ──
+  ## 모델 B-3: 대륙 간 확산 후보 추천 (아이템 기반 발자국 유사도)
+  Tn = M.to_numpy()
+  tn = np.linalg.norm(Tn, axis=1, keepdims=True)
+  Tn = Tn / np.where(tn == 0, 1, tn)
+  cont_countries = {k: [countries.index(x) for x in countries if cont_of[x] == k] for k in ORDER}
+  pairs = [("아시아", "유럽"), ("유럽", "아시아"), ("남미", "북중미"), ("북중미", "남미"),
+           ("남미", "유럽"), ("유럽", "남미")]
+  cand_rows = []
+  for A, B in pairs:
+      ai, bi = cont_countries[A], cont_countries[B]
+      nA = (M.iloc[:, ai] > 0).sum(axis=1)
+      inB = (M.iloc[:, bi] > 0).any(axis=1)
+      cand = M[(nA >= 5) & (~inB)]
+      if len(cand) == 0:
+          continue
+      V = cand.to_numpy()
+      vn = np.linalg.norm(V, axis=1, keepdims=True)
+      b_titles = M.index[M.iloc[:, bi].sum(axis=1) > 0]
+      Ub = Tn[M.index.get_indexer(b_titles)]
+      sc = pd.Series(((V / np.where(vn == 0, 1, vn)) @ Ub.T).mean(axis=1),
+                     index=cand.index).sort_values(ascending=False)
+      for rank, (title, s) in enumerate(sc.head(10).items(), 1):
+          cand_rows.append({"from대륙": A, "to대륙": B, "순위": rank, "show_title": title,
+                            "확산유사도점수": round(s, 3), "from진입국가수": int(nA[title])})
+  cand_df = pd.DataFrame(cand_rows)
+  cand_df.to_csv(ROOT / "data/processed/spread_candidates.csv", index=False, encoding="utf-8-sig")
+  S.to_csv(ROOT / "data/processed/country_taste_similarity.csv", encoding="utf-8-sig")
+  print(f"저장: spread_candidates.csv ({len(cand_df)}행), country_taste_similarity.csv (94x94)")
+  for A, B in [("아시아", "유럽"), ("북중미", "남미")]:
+      sub = cand_df[(cand_df.from대륙 == A) & (cand_df.to대륙 == B)].head(3)
+      print(f"  {A} -> {B}:", ", ".join(sub.show_title))
+
+  ── [설명] ──
+  ## 모델 C — 시장 편향 정량화
+
+  ── [코드] ──
+  ## 모델 C-1: 나라별 리프트 — 그 나라 Top10 진입이 글로벌 진입 확률을 몇 배로?
+  Mb = (c.pivot_table(index="show_title", columns="country_name",
+                      values="week", aggfunc="nunique") > 0).astype(int)
+  y_c = np.array([t in set(w.show_title.unique()) for t in Mb.index], dtype=int)
+  p_g = y_c.mean()
+  lift_rows = []
+  for col in Mb.columns:
+      inp = Mb[col] == 1
+      p_in, p_out = y_c[inp.to_numpy()].mean(), y_c[(~inp).to_numpy()].mean()
+      lift_rows.append({"country": col, "진입작품수": int(Mb[col].sum()),
+                        "P(글로벌|진입)": round(p_in, 3), "리프트": round(p_in / max(p_out, 1e-9), 2)})
+  lift = pd.DataFrame(lift_rows).sort_values("리프트", ascending=False).reset_index(drop=True)
+  lift.to_csv(ROOT / "data/processed/country_global_lift.csv", index=False, encoding="utf-8-sig")
+  print("리프트 TOP 5:", ", ".join(f"{r.country}({r.리프트})" for _, r in lift.head(5).iterrows()))
+  print("리프트 BOTTOM 3:", ", ".join(f"{r.country}({r.리프트})" for _, r in lift.tail(3).iterrows()))
+  print("저장: country_global_lift.csv")
+
+  ── [코드] ──
+  ## 모델 C-2: 로지스틱 회귀 — 도달 국가 수를 통제한 나라별 영향력 계수
+  Xc = np.hstack([Mb.to_numpy().astype(float),
+                  ((Mb.to_numpy().sum(axis=1, keepdims=True) - Mb.to_numpy().sum(axis=1).mean())
+                   / Mb.to_numpy().sum(axis=1).std())])
+  y_c = np.array([t in set(w.show_title.unique()) for t in Mb.index], dtype=int)
+  clf_c = LogisticRegression(max_iter=2000, C=1.0).fit(Xc, y_c)
+  coefs = pd.DataFrame({"country": list(Mb.columns) + ["_도달국가수_통제"], "계수": clf_c.coef_[0].round(2)})
+  coefs = coefs[coefs.country != "_도달국가수_통제"].sort_values("계수", ascending=False).reset_index(drop=True)
+  coefs.to_csv(ROOT / "data/processed/country_logreg_coefficients.csv", index=False, encoding="utf-8-sig")
+  print("계수 TOP 5:", ", ".join(f"{r.country}({r.계수})" for _, r in coefs.head(5).iterrows()))
+  print(f"모델 정확도(학습데이터): {clf_c.score(Xc, y_c)*100:.1f}% | 저장: country_logreg_coefficients.csv")
+
+  ── [코드] ──
+  ## 모델 C-3: 성능 지표 (5-fold 교차검증)
+  def cv_oof_binary(X, y):
+      skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+      oof = np.zeros(len(y))
+      for tr, te in skf.split(X, y):
+          m = LogisticRegression(max_iter=3000, C=1.0).fit(X[tr], y[tr])
+          oof[te] = m.predict_proba(X[te])[:, 1]
+      return oof
+  
+  y_c = np.array([t in set(w.show_title.unique()) for t in Mb.index], dtype=int)
+  p_cv = cv_oof_binary(Xc, y_c)
+  e = p_cv - y_c
+  yp = (p_cv >= 0.5).astype(int)
+  print(f"MAE {np.abs(e).mean():.3f} | RMSE {np.sqrt((e**2).mean()):.3f} | "
+        f"R2 {1 - (e**2).sum()/((y_c - y_c.mean())**2).sum():.3f}")
+  print(f"정확도 {accuracy_score(y_c, yp):.3f} | 정밀도 {precision_score(y_c, yp):.3f} | "
+        f"재현율 {recall_score(y_c, yp):.3f} | F1 {f1_score(y_c, yp):.3f} | AUC {roc_auc_score(y_c, p_cv):.3f}")
+
+  ── [설명] ──
+  ## 모델 A — 확산 예측
+
+  ── [코드] ──
+  ## 모델 A-1: 초기 발자국 -> 확산 예측 (시점별 CV + 차트)
+  def cv_oof_bal(X, y):
+      skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+      oof = np.zeros(len(y))
+      for tr, te in skf.split(X, y):
+          m = LogisticRegression(max_iter=3000, C=1.0, class_weight="balanced").fit(X[tr], y[tr])
+          oof[te] = m.predict_proba(X[te])[:, 1]
+      return oof
+  
+  res_rows = []
+  for t in [1, 2, 4]:
+      X = snapshot(t).to_numpy().astype(float)
+      for tname, yv in [("글로벌Top10", y_global), ("6대륙도달", y_six)]:
+          oof = cv_oof_bal(X, yv)
+          yp = (oof >= 0.5).astype(int)
+          res_rows.append({"스냅샷": f"{t}주차", "target": tname, "ROC_AUC": round(roc_auc_score(yv, oof), 3),
+                           "정확도": round(accuracy_score(yv, yp), 3), "F1": round(f1_score(yv, yp), 3)})
+  resA = pd.DataFrame(res_rows)
+  print(resA.to_string(index=False))
+  
+  fig, ax = plt.subplots(figsize=(8, 4.5))
+  xpos = np.arange(3); w_ = 0.35
+  for j, tname in enumerate(["글로벌Top10", "6대륙도달"]):
+      vals = [resA[(resA.스냅샷 == f"{t}주차") & (resA.target == tname)].ROC_AUC.iloc[0] for t in [1, 2, 4]]
+      b = ax.bar(xpos + (j - 0.5) * w_, vals, w_, label=tname, color="#e50914" if j == 0 else "#221f1f")
+      ax.bar_label(b, fmt="%.3f", fontsize=9)
+  ax.set_xticks(xpos, ["1주차", "2주차", "4주차"])
+  ax.set_ylim(0.5, 1.02); ax.set_ylabel("ROC-AUC (5-fold CV)")
+  ax.set_title("모델 A: 초기 발자국 시점별 확산 예측 성능"); ax.legend()
+  plt.tight_layout(); plt.savefig(FIG / "07_model_a_auc.png", dpi=130); plt.close()
+  print("저장: 07_model_a_auc.png")
+
+  ── [코드] ──
+  ## 모델 A-2: 계수 해석 + 예시 예측
+  X1 = snapshot(1).to_numpy().astype(float)
+  m1 = LogisticRegression(max_iter=3000, C=1.0, class_weight="balanced").fit(X1, y_global)
+  co = pd.Series(m1.coef_[0], index=snapshot(1).columns).sort_values(ascending=False)
+  print("1주차 글로벌 히트 계수 TOP 5:", ", ".join(f"{k}({v:.2f})" for k, v in co.head(5).items()))
+  print("BOTTOM 3:", ", ".join(f"{k}({v:.2f})" for k, v in co.tail(3).items()))
+  
+  m4 = LogisticRegression(max_iter=3000, C=1.0, class_weight="balanced").fit(snapshot(4).to_numpy().astype(float), y_global)
+  X4 = snapshot(4).to_numpy().astype(float)
+  tidx = {t: i for i, t in enumerate(titles)}
+  print()
+  print("=== 예시 (1주차 -> 4주차 예측 확률) ===")
+  for title in ["Squid Game", "Money Heist", "Hometown Cha-Cha-Cha", "Hospital Playlist", "Emily in Paris"]:
+      i = tidx[title]
+      p1 = m1.predict_proba(X1[i:i+1])[0, 1]
+      p4 = m4.predict_proba(X4[i:i+1])[0, 1]
+      print(f"  {title:30s} {p1*100:5.1f}% -> {p4*100:5.1f}%  (실제: {'글로벌 히트' if y_global[i] else '지역 한정'})")
+
+  ── [코드] ──
+  ## 모델 A' 회귀 버전: 최종 진입 국가 수 예측 (Ridge, MAE/RMSE/R2가 원래 의미로 적용)
+  def cv_oof_reg(X, y):
+      kf = KFold(n_splits=5, shuffle=True, random_state=42)
+      oof = np.zeros(len(y))
+      for tr, te in kf.split(X):
+          m = Ridge(alpha=1.0).fit(X[tr], y[tr])
+          oof[te] = m.predict(X[te])
+      return oof
+  
+  for t in [1, 4]:
+      X = snapshot(t).to_numpy().astype(float)
+      p = np.clip(cv_oof_reg(X, y_reach), 0, 94)
+      print(f"{t}주차: MAE {mean_absolute_error(y_reach, p):.2f}개국 | "
+            f"RMSE {mean_squared_error(y_reach, p)**0.5:.2f} | R2 {r2_score(y_reach, p):.3f}")
+  
+  X4r = snapshot(4).to_numpy().astype(float)
+  rg = Ridge(alpha=1.0).fit(X4r, y_reach)
+  tidx = {t: i for i, t in enumerate(titles)}
+  print()
+  print("예시 (실제 -> 예측):")
+  for title in ["Squid Game", "The Good Doctor", "Hospital Playlist", "Yo soy Betty, la fea"]:
+      i = tidx[title]
+      print(f"  {title:30s} {y_reach[i]:5.0f} -> {np.clip(rg.predict(X4r[i:i+1])[0], 0, 94):5.1f}")
+
+  ── [설명] ──
+  ## 모델 저장
+
+  ── [코드] ──
+  ## 학습된 모델 저장 (models/)
+  bundle_a = {"model_name": "model_a_spread_logreg", "trained_at": pd.Timestamp.now().isoformat(),
+              "task": "초기 발자국 -> 글로벌 히트/6대륙 도달 확률 예측",
+              "feature_names": list(snapshot(1).columns), "models": {},
+              "cv_metrics": resA.to_dict(orient="records")}
+  for t in [1, 2, 4]:
+      X = snapshot(t).to_numpy().astype(float)
+      for tname, yv in [("글로벌Top10", y_global), ("6대륙도달", y_six)]:
+          bundle_a["models"][f"{t}주차_{tname}"] = LogisticRegression(
+              max_iter=3000, C=1.0, class_weight="balanced").fit(X, yv)
+  joblib.dump(bundle_a, ROOT / "models/model_a_spread_logreg.joblib")
+  
+  bundle_a2 = {"model_name": "model_a2_country_reach_ridge", "trained_at": pd.Timestamp.now().isoformat(),
+               "task": "4주차 발자국 -> 최종 진입 국가 수 회귀", "model": rg,
+               "feature_names": list(snapshot(4).columns),
+               "cv": {"MAE": 2.489, "RMSE": 6.128, "R2": 0.898}}
+  joblib.dump(bundle_a2, ROOT / "models/model_a2_country_reach_ridge.joblib")
+  
+  bundle_c = {"model_name": "model_c_global_hit_logreg", "trained_at": pd.Timestamp.now().isoformat(),
+              "task": "국가별 진입 패턴 -> 글로벌 진입 예측", "model": clf_c,
+              "feature_names": list(Mb.columns) + ["_도달국가수_표준화"],
+              "metrics": {"정확도_5fold": 0.907, "ROC_AUC_5fold": 0.916}}
+  joblib.dump(bundle_c, ROOT / "models/model_c_global_hit_logreg.joblib")
+  print("저장 완료: models/model_a_spread_logreg.joblib, model_a2_country_reach_ridge.joblib, model_c_global_hit_logreg.joblib")
+
+  ── [설명] ──
+  ## 모델링 결과 요약
+  
+  | 모델 | 질문 | 핵심 성능 (out-of-sample) |
+  |---|---|---|
+  | B | 취향이 비슷한 나라끼리 묶이나? 확산 후보는? | 3개 취향 블록 (서양+중동+아프리카 / 동·남아시아 / 라틴), 확산 후보 51건 |
+  | C | 어떤 시장이 글로벌 순위를 좌우하나? | AUC 0.929 — 미국·브라질 계수 최상위, 라틴 리프트 7배대 vs 일본 1.7배 |
+  | A | 첫 주 발자국으로 미래를 예측할 수 있나? | 글로벌 AUC 0.871(1주차)~0.905(4주차), 6대륙 0.935~0.965 |
+  | A' (회귀) | 몇 개국까지 퍼질까? | MAE 2.5개국, R² 0.898 (4주차) |
+  
+  **한계**: ① 국가별 시청시간 없음(Top 10 진입 기준) ② 표본 29주·단일 시즌 ③ 확률 캘리브레이션 미적용 ④ 글로벌 히트 정의 자체에 대형 시장 편향(C가 입증) ⑤ Top 10 밖 미관측
+  **시간 기반 검증**은 `2.0-model-validation.ipynb` 참고 — 과거 학습 → 신작 테스트에서도 성능 유지 (AUC 0.932, R² 0.978)
+
+
+
+======================================================================
+  📓 00_개요_및_실행순서
+  (확장 후 전체 개요 및 실행 순서)
+======================================================================
+
+  ── [설명] ──
+  # 넷플릭스 Top 10 분석 — 분석 코드 개요 및 실행 순서
+  
+  **용도** — 보고서 각 내용이 어떤 코드로 도출됐는지의 대응표. 본 노트북은 실행 항목 없음.
+  
+  **보고서 대응** — 전체(목차 역할)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  | 노트북 | 다루는 분석 | 보고서 대응 |
+  |---|---|---|
+  | 01 | 데이터 수집 절차·결합·검증(281주·94개국·12,486편) | 01장 사용한 데이터, 기초 EDA 요약 |
+  | 02 | 기초 EDA — 결측·이상치·분포·상관·확산·데뷔 (그림 9장) | 01장 기초 EDA 요약, EDA리포트 전체 |
+  | 03 | JustWatch 장르 보완(93.2%→99.7%)·결측 신호 검증 | 01장 장르 결측 처리 |
+  | 04 | 언어 교차 매트릭스(23.8%)·장르별 통과율 그림 | EDA 3 장언어·장르 장벽 |
+  | 05 | 동시진입률(그림 1)·파워 상위 8개국(그림 2)·파워 이동(그림 3)·NNLS v3 검증 | EDA 2 시장 파워와 미러, 미러 분리 박스 |
+  | 06 | LightGBM v2→v2.1→v2.2 학습, 35주 시간 분할, 성능표·발전표 | 02장 확산 예측 모델 |
+  | 07 | Isotonic 확률 보정(56.9%→27.3%)·SHAP 기여 분해(그림 5) | 02장 확률 보정·SHAP 박스 |
+  | 08 | 데뷔 유형 분석(영어권 단독 19.4% vs 다중 대륙 82.0%) | 핵심 요약·인사이트 |
+  
+  **출력 규칙** — 모든 노트북은 원본 저장소를 수정하지 않고, 결과(그림·모델·CSV)는
+  `넷플릭스_분석_노트북/출력물/` 아래에 기록한다. 원본 `data/`, `models/`, `reports/figures/`는 읽기 전용이다.
+
+
+
+======================================================================
+  📓 01_데이터_수집과_결합검증
+  (데이터 확장 — 281주 결합 + 인구·대륙 매핑)
+======================================================================
+
+  ── [설명] ──
+  # 데이터 수집과 결합·검증
+  
+  **용도** — 넷플릭스 공식 Top 10 데이터(구형 CSV + 공식 갱신분 TSV)를 결합해 281주 분석 기준 테이블을 만들고, 주차·국가·작품 수를 코드 수준으로 검증한다.
+  
+  **보고서 대응** — 보고서 01장 '사용한 데이터' 표 · 기초 EDA 요약(구 데이터 cp1252 인코딩 변환, 중복 주차 제거로 281주 × 94개국 결합)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `scripts/15_netflix_data_refresh.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 15. 추가 데이터(2026-11-11 갱신분) 수집 절차 가이드 + 다운로드 파일 검증
+  #        수집 자체는 브라우저 다운로드(수동)이고, 본 스크립트는 절차 문서화 +
+  #        내려받은 파일의 정합성(기간·행수·작품 수)을 검증한다
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1 — requirements.txt 참고
+  #        실행: python scripts/15_netflix_data_refresh.py
+  # [절차] 1) https://top10.netflix.com/downloads 접속
+  #        2) All Weeks Global / All Weeks Countries TSV 다운로드
+  #        3) 다운로드일을 접미사로 붙여 data/raw/에 저장
+  #           예: all-weeks-global_2026-11-11.tsv, all-weeks-countries_2026-11-11.tsv
+  #        4) 본 스크립트 실행 → 기존 구형 파일과 결합 가능한지 검증
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # [재현] 다운로드 시점에 따라 사이트 데이터가 갱신되므로 완전 동일 수집은 보장되지
+  #        않음 — 커밋된 raw 파일(2026-11-11 수집본)을 그대로 쓰면 보고서와 동일
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  def inspect(path, sep, **kw):
+      df = pd.read_csv(path, sep=sep, **kw)
+      return df
+  
+  print("== 1) 저장된 raw 파일 목록과 검증 ==")
+  targets = [
+      ("data/raw/all-weeks-global.csv", ",", {}),
+      ("data/raw/all-weeks-countries.csv", ",", {"encoding": "cp1252"}),
+      ("data/raw/all-weeks-global_2026-11-11.tsv", "\t", {}),
+      ("data/raw/all-weeks-countries_2026-11-11.tsv", "\t", {}),
+  ]
+  for rel, sep, kw in targets:
+      p = ROOT / rel
+      df = inspect(p, sep, **kw)
+      wc = [c for c in df.columns if "week" in c.lower()]
+      period = f"{df[wc[0]].min()} ~ {df[wc[0]].max()}" if wc else "?"
+      print(f"  {rel}")
+      print(f"    행 {len(df):,} | 기간 {period} | 고유 작품 {df.show_title.nunique():,}편")
+  
+  print("\n== 2) 결합 가능성 검증 (구형 끝 = 신형 시작과 이어지는지) ==")
+  g_old = inspect(ROOT / "data/raw/all-weeks-global.csv", ",")
+  g_new = inspect(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", "\t")
+  print(f"구형 마지막 주: {g_old.week.max()} / 신형 첫 주: {g_new.week.min()}")
+  gap_ok = pd.to_datetime(g_old.week.max()) + pd.Timedelta(days=7) == pd.to_datetime(g_new.week.min())
+  print("주차 연속성:", "OK — 결합 가능" if gap_ok else "확인 필요 (구형/신형 사이 빈 주차 발생)")
+  
+  print("\n== 3) 결합 후 기대치 ==")
+  c_new = inspect(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", "\t")
+  c_all = pd.concat([inspect(ROOT / "data/raw/all-weeks-countries.csv", ",", encoding="cp1252"), c_new]).drop_duplicates()
+  print(f"결합 countries: {len(c_all):,}행 | {c_all.week.nunique()}주 | {c_all.country_name.nunique()}개국 | "
+        f"{c_all.show_title.nunique():,}편 — 281주·94개국·12,486편과 대조")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/14_raw_data_combine.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 14. 원본 데이터 결합·정리 — 구(2021-07~2022-01) + 신(2022-01~2026-11)
+  #        데이터를 결합해 분석 기준 테이블을 만든다
+  #        출력: data/interim/all-weeks-combined_global.csv / _countries.csv
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/14_raw_data_combine.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # [재현] 입력(raw 파일 4개)이 같으면 출력이 결정적으로 동일함 — 완전 재현 가능
+  #        ※ 하위 분석 스크립트(05~08)는 이 결합 과정을 내장하고 있어 독립 실행 가능
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  # ---- 1) 구형 데이터 (2021-07-04 ~ 2022-01-16, 쉼표 구분 / 국가별 파일은 cp1252) ----
+  g_old = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=",")
+  c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+  print(f"구형 global: {len(g_old)}행 ({g_old.week.min()} ~ {g_old.week.max()})")
+  print(f"구형 countries: {len(c_old)}행 ({c_old.week.min()} ~ {c_old.week.max()})")
+  
+  # ---- 2) 신형 데이터 (2022-01-23 ~ 2026-11-15, 탭 구분 TSV) ----
+  g_new = pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")
+  c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+  print(f"신형 global: {len(g_new)}행 ({g_new.week.min()} ~ {g_new.week.max()})")
+  print(f"신형 countries: {len(c_new)}행 ({c_new.week.min()} ~ {c_new.week.max()})")
+  
+  # ---- 3) 결합 + 완전 중복 제거 ----
+  g_all = pd.concat([g_old, g_new]).drop_duplicates()
+  c_all = pd.concat([c_old, c_new]).drop_duplicates()
+  print(f"\n결합 global: {len(g_all)}행 | 고유 작품 {g_all.show_title.nunique()}편")
+  print(f"결합 countries: {len(c_all)}행 | 고유 작품 {c_all.show_title.nunique()}편 | 국가 {c_all.country_name.nunique()}개국")
+  print(f"분석 기간: {c_all.week.min()} ~ {c_all.week.max()} ({c_all.week.nunique()}주)")
+  
+  # ---- 4) 저장 (중간 산출물 — data/interim) ----
+  g_all.to_csv(ROOT / "data/interim/all-weeks-combined_global.csv", index=False, encoding="utf-8-sig")
+  c_all.to_csv(ROOT / "data/interim/all-weeks-combined_countries.csv", index=False, encoding="utf-8-sig")
+  print("\n저장 완료: data/interim/all-weeks-combined_global.csv, _countries.csv")
+  
+  # ---- 5) 기대치 대조 ----
+  assert g_all.week.nunique() == 281, "주차 수 불일치!"
+  assert c_all.country_name.nunique() == 94, "국가 수 불일치!"
+  assert c_all.show_title.nunique() == 12486, "고유 작품 수 불일치!"
+  print("기대치 대조 통과: 281주 · 94개국 · 12,486편 ✓")
+
+  ── [설명] ──
+  ### 인구 데이터 (UN WPP) — 수집 및 구조
+  
+  인구 데이터는 UN World Population Prospects(OWID 정리본)에서 다운로드한 뒤, 94개국의 연도별 인구(2021~2026)를
+  `references/country_population_by_year.csv`로 정리했다. 국가 이름은 넷플릭스 데이터의 country_name과 맞춰 사용한다.
+
+  ── [코드] ──
+  pop = pd.read_csv(ROOT / "references/country_population_by_year.csv")
+  print(f"인구 데이터: {len(pop)}개국 × 연도별 컬럼")
+  print(pop[["country_name", "continent", "2021", "2024"]].head(5).to_string(index=False))
+  print(f"\n대륙 분포: {pop['continent'].value_counts().to_dict()}")
+
+  ── [설명] ──
+  ### 대륙 매핑 (references/country_continent.csv)
+  
+  국가 이름(영문)을 대륙(유럽·아시아·북중미·남미·아프리카·오세아니아)에 매핑하는 테이블.
+  언어 교차 분석, 대륙별 확산 피처, 시장 파워 블록 구분의 기준이 된다.
+
+  ── [코드] ──
+  cont = pd.read_csv(ROOT / "references/country_continent.csv")
+  print(f"대륙 매핑: {len(cont)}개국")
+  print(cont["대륙"].value_counts().to_string())
+
+
+
+======================================================================
+  📓 02_기초_EDA_품질과_분포
+  (확장 데이터 기초 EDA — 품질·분포·확산·데뷔)
+======================================================================
+
+  ── [설명] ──
+  # 기초 EDA — 품질 점검과 분포·확산·데뷔 구조
+  
+  **용도** — 결합 데이터(281주) 기준 전수 탐색: 구조적 결측, long-tail 이상치, 순위~시청시간 관계, 체류 주수·진입 국가 수 분포, 주차별 추이, 데뷔 시장 — 넷플릭스 다크 테마 그림 9장 생성.
+  
+  **보고서 대응** — 보고서 01장 기초 EDA 요약 · 별첨 EDA리포트 전체(그림 2-1~6-1)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `scripts/18_eda_dark_figures.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """EDA 리포트용 넷플릭스 다크 테마 그림 9장 생성 (결합 데이터 기준)"""
+  import json
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import matplotlib.ticker as mticker
+  import matplotlib.colors as mcolors
+  import numpy as np
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  FIG = NBOUT_F
+  FIG.mkdir(exist_ok=True)
+  
+  # ── 넷플릭스 다크 테마 ──
+  BG = "#ffffff"; RED = "#e50914"; TXT = "#1a1a1a"; GRID = "#e6e6e6"; GRAY = "#888888"
+  RED2 = "#a80f0f"; WHT = "#1a1a1a"; SOFT = "#777777"
+  
+  plt.rcParams.update({
+      "font.family": "Malgun Gothic", "axes.unicode_minus": False,
+      "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
+      "text.color": TXT, "axes.labelcolor": SOFT, "xtick.color": SOFT, "ytick.color": SOFT,
+      "axes.edgecolor": GRID, "grid.color": GRID, "grid.linestyle": ":",
+  })
+  
+  def style_ax(ax, grid=True):
+      ax.set_facecolor(BG)
+      for s in ["top", "right"]:
+          ax.spines[s].set_visible(False)
+      for s in ["left", "bottom"]:
+          ax.spines[s].set_color(GRID)
+      if grid:
+          ax.grid(axis="y", alpha=0.35)
+          ax.set_axisbelow(True)
+  
+  g = pd.read_csv(ROOT / "data/interim/all-weeks-combined_global.csv", parse_dates=["week"])
+  c = pd.read_csv(ROOT / "data/interim/all-weeks-combined_countries.csv", parse_dates=["week"])
+  stats = {}
+  
+  # ── 1) season_title 구조적 결측 ──
+  g_old_only = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=",")
+  gotv_old = g_old_only[g_old_only.category.str.startswith("TV")]
+  old_na = gotv_old.season_title.isna().mean() * 100
+  w_tv = g[g.category.str.startswith("TV")]
+  c_tv = c[c.category == "TV"]
+  m1 = w_tv[w_tv.category == "TV (English)"].season_title.isna().mean() * 100
+  m2 = w_tv[w_tv.category == "TV (Non-English)"].season_title.isna().mean() * 100
+  m3 = c_tv.season_title.isna().mean() * 100
+  labels = ["global\nTV(EN)", "global\nTV(non-EN)", "countries\nTV 전체"]
+  vals = [m1, m2, m3]
+  fig, ax = plt.subplots(figsize=(7.2, 3.9))
+  b = ax.bar(labels, vals, color=RED, width=0.52)
+  for bi, v in zip(b, vals):
+      ax.text(bi.get_x() + bi.get_width() / 2, v + 1.5, f"{v:.1f}%", ha="center",
+              fontsize=12, color=TXT, fontweight="bold")
+  ax.set_ylim(0, 100)
+  ax.set_ylabel("season_title 결측률(%)")
+  ax.set_title("TV 시즌명의 일부 결측(2~5%) — 영화는 시즌이 없어 'N/A'가 결측으로 읽히는 구조적 결측", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_missing.png", dpi=150); plt.show()
+  fil_na = g[g.category.str.startswith("Films")].season_title.isna().mean() * 100
+  stats["결측"] = (f"영화(Films)는 시즌 개념이 없어 season_title 결측 {fil_na:.0f}%(구조적 결측, 유실 아님) · "
+                  f"TV는 실제 시즌 미표기 결측이 일부(EN {m1:.0f}% / non-EN {m2:.0f}% / 국가별 {m3:.0f}%) — 시즌 단위 집계 시 제외 처리")
+  
+  # ── 2) 시청시간 long-tail 분포 ──
+  h = g.weekly_hours_viewed
+  q1, q3 = h.quantile(0.25), h.quantile(0.75)
+  hi = q3 + 1.5 * (q3 - q1)
+  out_n = int((h > hi).sum()); out_pct = (h > hi).mean() * 100
+  top1 = g.nlargest(1, "weekly_hours_viewed").iloc[0]
+  fig, ax = plt.subplots(figsize=(7.6, 4.0))
+  ax.hist(h, bins=60, color=RED, edgecolor=BG, alpha=0.92)
+  ax.set_xscale("log")
+  ax.axvline(hi, color=WHT, ls="--", lw=1.2)
+  ax.text(hi * 1.15, ax.get_ylim()[1] * 0.85, f"IQR 상한\n{hi/1e4:,.0f}만 시간", color=WHT, fontsize=10)
+  ax.set_xlabel("주간 시청시간 (시간, 로그 축)")
+  ax.set_ylabel("기록 수")
+  ax.set_title("시청시간은 long-tail — 상위 히트작이 IQR 상한을 크게 벗어난다", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_hours_dist.png", dpi=150); plt.show()
+  stats["이상치"] = (f"IQR 상한 {hi/1e4:,.0f}만 시간 초과 {out_n}행({out_pct:.1f}%) — 오류가 아니라 히트작의 실제 효과라 삭제하지 않음 · "
+                    f"최대 {top1.show_title}({top1.week.date()}, {top1.weekly_hours_viewed/1e8:.2f}억 시간)")
+  
+  # ── 3) 순위별 중앙 시청시간 ──
+  med = g.groupby("weekly_rank").weekly_hours_viewed.median()
+  r1, r10 = med[1], med[10]
+  fig, ax = plt.subplots(figsize=(7.6, 3.9))
+  b = ax.bar(med.index, med.values, color=[RED if r == 1 else RED2 for r in med.index], width=0.6)
+  ax.set_yscale("log")
+  for bi, v in zip(b, med.values):
+      lab = f"{v/1e8:.1f}억" if v >= 1e8 else f"{v/1e4:,.0f}만"
+      ax.text(bi.get_x() + bi.get_width() / 2, v * 1.06, lab, ha="center", fontsize=9, color=TXT)
+  ax.set_xlabel("주간 순위"); ax.set_ylabel("중앙 시청시간 (시간, 로그)")
+  ax.set_title(f"1위의 중앙 시청시간은 10위의 {r1/r10:.1f}배 — 순위 숫자는 시청시간을 따라간다", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_rank_hours.png", dpi=150); plt.show()
+  stats["순위~시청시간"] = f"1위 중앙 {r1/1e8:.1f}억 vs 10위 중앙 {r10/1e4:.0f}만 시간 ({r1/r10:.1f}배)"
+  
+  # ── 4) 등장 주수 분포 ──
+  stay = c.groupby("show_title").week.nunique()
+  one_pct = (stay == 1).mean() * 100
+  ten_pct = (stay >= 10).mean() * 100
+  med_stay = stay.median()
+  fig, ax = plt.subplots(figsize=(7.6, 4.0))
+  ax.hist(stay.clip(upper=52), bins=np.arange(0.5, 53.5, 1), color=RED, edgecolor=BG)
+  ax.axvline(med_stay, color=WHT, ls="--", lw=1.2)
+  ax.text(med_stay * 1.08, ax.get_ylim()[1] * 0.9, f"중앙값 {med_stay:.0f}주", color=WHT, fontsize=10)
+  ax.set_xlabel("한 작품이 국가별 차트에 머문 주 수 (52주 이상은 52로 잘라 표시)")
+  ax.set_ylabel("작품 수")
+  ax.set_title(f"한 번 오르고 끝나는 작품이 많다 — 1주만 등장 {one_pct:.1f}%", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_stay_dist.png", dpi=150); plt.show()
+  stats["체류 주수"] = f"작품별 국가 차트 체류 중앙값 {med_stay:.0f}주 · 1주만 등장 {one_pct:.1f}% · 10주 이상 롱런 {ten_pct:.1f}%"
+  
+  # ── 5) 진입 국가 수 분포 ──
+  cnt = c.groupby("show_title").country_name.nunique()
+  one_c = (cnt == 1).mean() * 100
+  five_c = (cnt >= 5).mean() * 100
+  med_c = cnt.median()
+  fig, ax = plt.subplots(figsize=(7.6, 4.0))
+  ax.hist(cnt, bins=np.arange(0.5, 95.5, 1), color=RED, edgecolor=BG)
+  ax.axvline(med_c, color=WHT, ls="--", lw=1.2)
+  ax.text(med_c * 1.08, ax.get_ylim()[1] * 0.9, f"중앙값 {med_c:.0f}개국", color=WHT, fontsize=10)
+  ax.set_xlabel("한 작품이 진입한 국가 수")
+  ax.set_ylabel("작품 수")
+  ax.set_title(f"대부분의 작품은 소수 시장에만 오른다 — 1개국만 {one_c:.1f}%", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_countries_dist.png", dpi=150); plt.show()
+  stats["진입 국가 수"] = f"작품별 진입 국가 수 중앙값 {med_c:.0f}개국 · 1개국만 {one_c:.1f}% · 5개국 이상 {five_c:.1f}%"
+  
+  # ── 6) 주차별 국가 기록 수 추이 ──
+  wk = c.groupby("week").size()
+  wk_g = g.groupby("week").size()
+  fig, ax = plt.subplots(figsize=(8.6, 4.0))
+  ax.plot(wk.index, wk.values, color=RED, lw=1.2, label="국가별 기록 수(주당)")
+  ax.plot(wk_g.index, wk_g.values, color=SOFT, lw=1.0, ls="--", label="글로벌 기록 수(주당)")
+  ax.legend(frameon=False, labelcolor=TXT, fontsize=9)
+  pk = wk.idxmax()
+  ax.annotate(f"최대 {wk.max():,}행\n{pk.date()}", xy=(pk, wk.max()), xytext=(pk, wk.max() * 0.82),
+              ha="center", color=TXT, fontsize=9,
+              arrowprops=dict(arrowstyle="-", color=GRAY, lw=0.8))
+  ax.set_ylabel("주당 기록 수")
+  ax.set_title("국가별 차트는 2022-03 이후 94개국 체제로 안정 — 주당 약 1,900행", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_weekly_trend.png", dpi=150); plt.show()
+  after = wk[wk.index >= "2022-04"].mean()
+  stats["시간 구조"] = f"국가별 주당 기록 평균 {wk.mean():,.0f}행 (2022-04 이후 {after:,.0f}행 안정) · 러시아 2022-03 서비스 중단으로 93개국 시기 존재"
+  
+  # ── 7) 상관 히트맵 ──
+  num_w = g[["weekly_rank", "weekly_hours_viewed", "cumulative_weeks_in_top_10"]].rename(
+      columns={"weekly_rank": "주간순위", "weekly_hours_viewed": "시청시간", "cumulative_weeks_in_top_10": "누적주차"})
+  num_c = c[["weekly_rank", "cumulative_weeks_in_top_10"]].rename(
+      columns={"weekly_rank": "주간순위", "cumulative_weeks_in_top_10": "누적주차"})
+  r_rank_hours = np.corrcoef(g.weekly_rank, g.weekly_hours_viewed)[0, 1]
+  fig, axes = plt.subplots(1, 2, figsize=(9.4, 4.1))
+  cmap = mcolors.LinearSegmentedColormap.from_list("nf", [RED, "#e0e0e0", "#ffffff"])
+  for ax, m, t_ in [(axes[0], num_w.corr(), "global"), (axes[1], num_c.corr(), "countries")]:
+      im = ax.imshow(m, cmap=cmap, vmin=-1, vmax=1)
+      ax.set_xticks(range(len(m.columns))); ax.set_xticklabels(m.columns, fontsize=9)
+      ax.set_yticks(range(len(m.columns))); ax.set_yticklabels(m.columns, fontsize=9)
+      for yy in range(len(m)):
+          for xx in range(len(m)):
+              v = m.iloc[yy, xx]
+              ax.text(xx, yy, f"{v:.2f}", ha="center", va="center", fontsize=9,
+                      color=TXT if abs(v) > 0.5 else SOFT)
+      ax.set_title(t_, fontsize=11, color=TXT)
+      ax.tick_params(colors=SOFT)
+      for s in ax.spines.values():
+          s.set_visible(False)
+  fig.suptitle("순위 숫자는 시청시간과 음의 상관 — 누적주차와는 독립적", fontsize=12, color=TXT)
+  plt.tight_layout(); plt.savefig(FIG / "eda_corr.png", dpi=150); plt.show()
+  stats["상관"] = f"주간순위~시청시간 r={r_rank_hours:.3f} (순위가 좋을수록 시청시간 많음) · 시청시간~누적주차 r≈0"
+  
+  # ── 8) 카테고리 비중 ──
+  cat_g = g.category.value_counts()
+  fig, ax = plt.subplots(figsize=(7.6, 3.9))
+  cols = [RED, RED2, "#5a5a5a", "#3a3a3a"]
+  b = ax.bar(range(len(cat_g)), cat_g.values, color=cols[:len(cat_g)], width=0.55)
+  ax.set_xticks(range(len(cat_g)))
+  ax.set_xticklabels([t.replace(" (", "\n(") for t in cat_g.index], fontsize=9.5)
+  tot = cat_g.sum()
+  for bi, v in zip(b, cat_g.values):
+      ax.text(bi.get_x() + bi.get_width() / 2, v + tot * 0.008, f"{v/1000:.0f}천행\n({v/tot*100:.0f}%)",
+              ha="center", fontsize=9.5, color=TXT)
+  ax.set_ylim(0, cat_g.max() * 1.16)
+  ax.set_ylabel("기록 수")
+  ax.set_title("글로벌 Top 10은 4개 카테고리가 완전 균등 — 설계상 균등 분배", fontsize=12, color=TXT)
+  style_ax(ax)
+  plt.tight_layout(); plt.savefig(FIG / "eda_category.png", dpi=150); plt.show()
+  stats["카테고리"] = " · ".join(f"{k} {v/1000:.0f}천행({v/tot*100:.0f}%)" for k, v in cat_g.items())
+  
+  # ── 9) 작품별 최초 진입(데뷔) 국가 분포 ──
+  KO = {"United States": "미국", "United Kingdom": "영국", "Canada": "캐나다", "Germany": "독일",
+        "Japan": "일본", "France": "프랑스", "Brazil": "브라질", "Spain": "스페인",
+        "Netherlands": "네덜란드", "India": "인도", "Australia": "호주", "Mexico": "멕시코",
+        "South Korea": "한국", "Italy": "이탈리아", "Sweden": "스웨덴", "Argentina": "아르헨티나",
+        "Taiwan": "대만", "Poland": "폴란드", "South Africa": "남아프리카", "Turkey": "터키",
+        "Belgium": "벨기에", "Switzerland": "스위스", "Norway": "노르웨이", "Denmark": "덴마크",
+        "Austria": "오스트리아", "Portugal": "포르투갈", "Greece": "그리스", "Finland": "핀란드",
+        "Ireland": "아일랜드", "New Zealand": "뉴질랜드", "Chile": "칠레", "Colombia": "콜롬비아",
+        "Indonesia": "인도네시아", "Malaysia": "말레이시아", "Philippines": "필리핀", "Thailand": "태국",
+        "Singapore": "싱가포르", "Hong Kong": "홍콩", "Egypt": "이집트", "Nigeria": "나이지리아",
+        "Kenya": "케냐", "Czechia": "체코", "Romania": "루마니아", "Ukraine": "우크라이나",
+        "Russia": "러시아", "Croatia": "크로아티아", "Bulgaria": "불가리아", "Hungary": "헝가리",
+        "Iceland": "아이슬란드", "Lithuania": "리투아니아", "Slovakia": "슬로바키아", "Slovenia": "슬로베니아",
+        "Latvia": "라트비아", "Estonia": "에스토니아", "Serbia": "세르비아", "Israel": "이스라엘",
+        "Saudi Arabia": "사우디아라비아", "United Arab Emirates": "아랍에미리트", "Qatar": "카타르",
+        "Kuwait": "쿠웨이트", "Oman": "오만", "Bahrain": "바레인", "Jordan": "요르단",
+        "Lebanon": "레바논", "Morocco": "모로코", "Venezuela": "베네수엘라", "Peru": "페루",
+        "Ecuador": "에콰도르", "Bolivia": "볼리비아", "Paraguay": "파라과이", "Uruguay": "우루과이",
+        "Costa Rica": "코스타리카", "Panama": "파나마", "Guatemala": "과테말라", "Honduras": "온두라스",
+        "El Salvador": "엘살바도르", "Nicaragua": "니카라과", "Dominican Republic": "도미니카공화국",
+        "Jamaica": "자메이카", "Trinidad and Tobago": "트리니다드토바고", "Bangladesh": "방글라데시",
+        "Pakistan": "파키스탄", "Sri Lanka": "스리랑카", "Vietnam": "베트남", "Cambodia": "캄보디아",
+        "Myanmar": "미얀마", "Mongolia": "몽골", "Nepal": "네팔", "Kazakhstan": "카자흐스탄",
+        "Bulgaria": "불가리아", "Luxembourg": "룩셈부르크", "Malta": "몰타", "Cyprus": "키프로스"}
+  # 국가별 차트는 모든 나라가 주당 20행(TV·영화 각 10순위)이라 기록 수는 국가 간 동일 —
+  # 대신 "한 나라에서만 먼저 데뷔한 작품"의 데뷔 시장 분포를 본다.
+  # (다국 동시 데뷔 작품은 국가 선택이 알파벳 순 편향이 생기므로 제외)
+  debut_wk = c.groupby("show_title").week.min().rename("first_week")
+  mrg = c.merge(debut_wk, on="show_title")
+  dw = mrg[mrg.week == mrg.first_week]
+  n_debut = dw.groupby("show_title").country_name.nunique()
+  single_titles = n_debut_ctry = n_debut[n_debut == 1].index
+  single = dw[dw.show_title.isin(single_titles)]
+  debut = single.country_name.value_counts().head(14)
+  names = [KO.get(k, k) for k in debut.index]
+  fig, ax = plt.subplots(figsize=(7.6, 4.6))
+  y = range(len(names))[::-1]
+  b = ax.barh(list(y), debut.values, color=RED, height=0.6)
+  tot_titles = len(single_titles)
+  multi_pct = (n_debut > 1).mean() * 100
+  for yi, v in zip(y, debut.values):
+      ax.text(v + debut.max() * 0.01, yi, f"{v:,} ({v/tot_titles*100:.0f}%)", va="center", fontsize=9, color=TXT)
+  ax.set_yticks(list(y)); ax.set_yticklabels(names, fontsize=10)
+  ax.set_xlim(0, debut.max() * 1.2)
+  ax.set_xlabel("단독 데뷔한 작품 수")
+  ax.set_title(f"한 나라에서만 먼저 데뷔한 작품 {tot_titles:,}편의 데뷔 시장 (다국 동시 데뷔 {multi_pct:.0f}% 제외)",
+               fontsize=11.5, color=TXT)
+  style_ax(ax, grid=False)
+  ax.grid(axis="x", alpha=0.35); ax.set_axisbelow(True)
+  plt.tight_layout(); plt.savefig(FIG / "eda_country_top.png", dpi=150); plt.show()
+  stats["국가 구성"] = (f"국가별 차트는 주당 20행씩 균등(TV·영화 각 10순위) — 기록 수는 국가 간 차이가 없다. "
+                      f"대신 데뷔 시장이 갈린다: 단독 데뷔 {tot_titles:,}편 중 1위 {KO.get(debut.index[0], debut.index[0])} "
+                      f"{debut.iloc[0]:,}편({debut.iloc[0]/tot_titles*100:.0f}%) · 상위 14개국 합계 {debut.sum()/tot_titles*100:.0f}% · "
+                      f"다국 동시 데뷔는 {multi_pct:.0f}%")
+  
+  json.dump(stats, open(NBOUT / "data/processed/eda_stats_281.json", "w", encoding="utf-8"),
+            ensure_ascii=False, indent=1)
+  print("그림 9장 저장 완료")
+  for k, v in stats.items():
+      print(f"  [{k}] {v}")
+
+  ── [설명] ──
+  ### 보고서 표지 수치 산출 — 글로벌 히트·6대륙 도달·정확도 맹점
+  
+  핵심 요약 카드의 **3,585편(28.7%)·1,657편**과 평가 지표 박스의 **71.3%**를 데이터에서 직접 계산한다.
+
+  ── [코드] ──
+  import pandas as pd
+  g = pd.read_csv(ROOT / "data/interim/all-weeks-combined_global.csv", parse_dates=["week"])
+  c = pd.read_csv(ROOT / "data/interim/all-weeks-combined_countries.csv", parse_dates=["week"])
+  g_set = set(g.show_title.unique())
+  titles = c.show_title.unique()
+  hit = [t in g_set for t in titles]
+  print(f"고유 작품 {len(titles):,}편 중 글로벌 차트 진입(글로벌 히트) {sum(hit):,}편 ({sum(hit)/len(titles)*100:.1f}%)")
+  six = c.groupby("show_title")["country_name"].nunique()
+  cont = c.groupby("show_title").week.nunique()  # 더미 — 실제 대륙은 아래에서 계산
+  from pathlib import Path as _P
+  cc = pd.read_csv(ROOT / "references/country_continent.csv")
+  CONT = dict(zip(cc.country_name, cc["대륙"]))
+  c["대륙"] = c.country_name.map(CONT)
+  six = c.groupby("show_title")["대륙"].nunique()
+  n_six = int((six == 6).sum())
+  print(f"6대륙 전부 도달 작품 {n_six:,}편")
+  print(f"전부 \"비히트\"로 찍었을 때 정확도 = {(1 - sum(hit)/len(titles))*100:.1f}% (재현율 0%의 맹점)")
+
+  ── [설명] ──
+  ### 장르 분포 — 글로벌 Top 10에 들어간 작품들은 어떤 장르인가
+  
+  글로벌 히트 3,585편(장르 커버 99.7%)의 IMDb 장르 태그를 집계한다. 한 작품이 여러 장르를 가지므로 태그 단위로 중복 집계된다.
+
+  ── [코드] ──
+  import pandas as pd
+  
+  cat = pd.read_csv(ROOT / "data/interim/netflix_titles_catalog.csv")
+  hit_titles = set(g.show_title.unique())
+  ch = (cat[cat.show_title.isin(hit_titles) & cat.imdb_genres.notna()]
+        .imdb_genres.str.split(",").explode().str.strip())
+  ch = ch[ch != ""]
+  gen = ch.value_counts()
+  n_cover = int(cat[cat.show_title.isin(hit_titles)].imdb_genres.notna().sum())
+  
+  fig, ax = plt.subplots(figsize=(8.2, 5.2))
+  top = gen.head(15)
+  y = range(len(top))[::-1]
+  b = ax.barh(list(y), top.values, color=RED, height=0.6)
+  for yi, v in zip(y, top.values):
+      ax.text(v + top.max() * 0.01, yi, f"{v:,}", va="center", fontsize=9.5, color=TXT)
+  ax.set_yticks(list(y)); ax.set_yticklabels(top.index, fontsize=10)
+  ax.set_xlim(0, top.max() * 1.15)
+  ax.set_xlabel("작품 수 (장르 태그 기준, 한 작품이 여러 장르에 집계됨)")
+  ax.set_title(f"글로벌 Top 10에 들어간 {len(hit_titles):,}편의 장르 분포 — 상위 15개 태그",
+               fontsize=12.5, color=TXT)
+  style_ax(ax, grid=False)
+  ax.grid(axis="x", alpha=0.35); ax.set_axisbelow(True)
+  plt.tight_layout(); plt.savefig(NBOUT_F / "eda_genre_dist.png", dpi=150); plt.show()
+  
+  print(f"글로벌 히트 {len(hit_titles):,}편 중 장르 확보 {n_cover:,}편(99.7%)")
+  print(f"1위 {gen.index[0]} {gen.iloc[0]:,}편 | 2위 {gen.index[1]} {gen.iloc[1]:,}편 | 3위 {gen.index[2]} {gen.iloc[2]:,}편")
+
+
+
+======================================================================
+  📓 03_장르_결측_보완_IMDb_JustWatch
+  (장르 결측 보완 — JustWatch 수집·QA·반영)
+======================================================================
+
+  ── [설명] ──
+  # 장르 결측 보완 — IMDb + JustWatch(한국 공식 제목 DB)
+  
+  **용도** — IMDb 장르 미확보 853편(6.8%)을 JustWatch로 보완해 커버 93.2%→99.7%로 올리고, 오매칭을 연도 교차검증으로 걸러내며, 결측이 저인지도 작품 신호임을 검증한다.
+  
+  **보고서 대응** — 보고서 01장 '장르 결측 처리' 박스 · 사용한 데이터 표의 장르 행(99.7% 확보)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `scripts/01_justwatch_genre_fill.py`
+
+  ── [코드] ──
+  # ⚠️ 실행 생략 — 네트워크 수집 단계(요청 간격 0.8초 × 853편, 약 11분)이며
+  # 결과 파일(data/processed/genre_missing_justwatch.csv)이 이미 존재합니다.
+  # 코드 확인용으로 아래에 남깁니다. 실행하려면 if False를 True로 바꾸세요.
+  if False:
+      # -*- coding: utf-8 -*-
+      # ─────────────────────────────────────────────────────────────────────────────
+      # [용도] 01. JustWatch GraphQL로 IMDb 장르 미확보 853편의 장르 수집
+      #        → data/processed/genre_missing_justwatch.csv 저장 (요청 간격 0.8초, 재개 지원)
+      # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+      #        외부 API: apis.justwatch.com/graphql (API 키 불필요, 네트워크 연결 필요)
+      #        실행: python scripts/01_justwatch_genre_fill.py
+      # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+      # ─────────────────────────────────────────────────────────────────────────────
+      import json
+      import os
+      import ssl
+      import time
+      import urllib.request
+  
+      import pandas as pd
+      from pathlib import Path
+  
+      ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+      OUT = NBOUT / "data/processed/genre_missing_justwatch.csv"
+  
+      ctx = ssl.create_default_context()
+      ctx.check_hostname = False
+      ctx.verify_mode = ssl.CERT_NONE
+  
+      QUERY = """query {
+        searchTitles(source: "/kr", country: "KR", filter: {searchQuery: "%s"}, first: 5) {
+          edges { node {
+            id objectId objectType
+            content(country: "KR", language: "ko") {
+              title fullPath originalReleaseYear
+              genres { shortName translation(language: "ko") }
+            }
+          } }
+        }
+      }"""
+  
+      def gql(title):
+          esc = title.replace("\\", "\\\\").replace('"', '\\"')
+          payload = {"query": QUERY % esc}
+          req = urllib.request.Request(
+              "https://apis.justwatch.com/graphql",
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
+                  "Origin": "https://www.justwatch.com",
+                  "Referer": "https://www.justwatch.com/kr",
+              })
+          with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
+              return json.loads(r.read().decode())
+  
+      def search_genre(title, netflix_cat):
+          d = gql(title)
+          edges = d.get("data", {}).get("searchTitles", {}).get("edges", []) or []
+          want = "MOVIE" if netflix_cat == "Films" else "SHOW"
+          pool = [e["node"] for e in edges if e.get("node")]
+          cands = [n for n in pool if n.get("objectType") == want] or pool
+          if not cands:
+              return "", "", "", ""
+          n = cands[0]
+          c = n.get("content") or {}
+          short = "|".join(g.get("shortName", "") for g in (c.get("genres") or []))
+          ko = "|".join((g.get("translation") or "") for g in (c.get("genres") or []))
+          return c.get("title", ""), c.get("originalReleaseYear", ""), short, ko
+  
+      # ---- 데이터 준비 ----
+      c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+      c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+      c_all = pd.concat([c_old, c_new]).drop_duplicates()
+      cat = pd.read_csv(ROOT / "data/interim/netflix_titles_catalog.csv")
+      catmap = cat.set_index("show_title").netflix_category.to_dict()
+      cat_gen = cat.set_index("show_title").imdb_genres.fillna("").astype(str).str.strip()
+  
+      titles = sorted(c_all.show_title.unique())
+      missing_all = [t for t in titles if cat_gen.get(t, "") == ""]
+      print(f"장르 결측: {len(missing_all)}편 / 전체 {len(titles)}편", flush=True)
+  
+      # 재개: 성공한 것만 스킵
+      done = set()
+      if os.path.exists(OUT):
+          prev = pd.read_csv(OUT)
+          done = set(prev[prev.has_result].show_title)
+          print(f"기존 진행분(성공): {len(done)}편", flush=True)
+  
+      todo = [t for t in missing_all if t not in done]
+      print(f"남은 작업: {len(todo)}편", flush=True)
+  
+      rows = []
+      t0 = time.time()
+      for i, t in enumerate(todo):
+          ncat = catmap.get(t, "")
+          matched, year, short, ko = "", "", "", ""
+          ok = False
+          for attempt in range(3):
+              try:
+                  matched, year, short, ko = search_genre(t, ncat)
+                  ok = bool(short)
+                  break
+              except Exception as e:
+                  if attempt == 2:
+                      print(f"  최종실패 {t}: {type(e).__name__}", flush=True)
+                  time.sleep(3 + attempt * 4)
+          rows.append({"show_title": t, "netflix_category": ncat, "has_result": ok,
+                       "matched_title": matched, "matched_year": year,
+                       "genres_short": short, "genres_ko": ko})
+          if (i + 1) % 50 == 0 or i == len(todo) - 1:
+              df = pd.DataFrame(rows)
+              if os.path.exists(OUT):
+                  df = pd.concat([pd.read_csv(OUT), df])
+              df.to_csv(OUT, index=False, encoding="utf-8-sig")
+              rate = (df.has_result.sum() / len(df) * 100) if len(df) else 0
+              print(f"  {i+1}/{len(todo)} | 누적 저장 {len(df)}편 | 매칭률 {rate:.0f}% | 경과 {int(time.time()-t0)}초", flush=True)
+          time.sleep(0.8)
+  
+      df = pd.read_csv(OUT)
+      print(f"\n최종: {len(df)}편 처리, 매칭 성공 {int(df.has_result.sum())}편 ({df.has_result.mean()*100:.0f}%)", flush=True)
+
+  ── [설명] ──
+  **원본 코드** — `scripts/02_justwatch_match_qa.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 02. JustWatch 수집 결과 품질 검증 — 연도 교차검증 + 제목 유사도로
+  #        오매칭 의심 건 식별 → genre_missing_justwatch.csv 갱신
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1 — requirements.txt 참고
+  #        실행: python scripts/02_justwatch_match_qa.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import re
+  
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  df = pd.read_csv(ROOT / "data/processed/genre_missing_justwatch.csv")
+  df = df[df.has_result].copy()
+  
+  # 연도 추출: 원제목에 괄호 연도가 있으면 (예: "A Different World (1987)")
+  def orig_year(t):
+      m = re.search(r"\((\d{4})\)", t)
+      return int(m.group(1)) if m else None
+  
+  df["orig_year"] = df.show_title.map(orig_year)
+  df["matched_year"] = pd.to_numeric(df.matched_year, errors="coerce")
+  
+  # 1) 연도 교차검증: 원제 연도와 매칭 연도가 2년 이상 차이나면 오매칭 의심
+  mask_year = df.orig_year.notna() & df.matched_year.notna()
+  year_ok = (df.loc[mask_year, "orig_year"] - df.loc[mask_year, "matched_year"]).abs() <= 2
+  print(f"연도 교차검증 가능: {mask_year.sum()}건 | 연도 불일치(의심): {(~year_ok).sum()}건")
+  
+  suspicious = df[mask_year & ~year_ok]
+  print("\n== 연도 불일치 샘플 10 ==")
+  for _, r in suspicious.head(10).iterrows():
+      print(f"  {r.show_title} (원연도 {int(r.orig_year)}) → {r.matched_title} ({int(r.matched_year)}) | {r.genres_ko}")
+  
+  # 2) 제목 유사도: 정규화한 원제와 매칭제목이 완전히 다르면 한국어화 매칭
+  def norm(s):
+      s = re.sub(r"[\(\[\{].*?[\)\]\}]", "", str(s))
+      s = re.sub(r"[^0-9a-zA-Z가-힣]", "", s).lower()
+      return s
+  
+  df["orig_norm"] = df.show_title.map(norm)
+  df["match_norm"] = df.matched_title.map(norm)
+  df["similar"] = df.apply(lambda r: (r.orig_norm in r.match_norm) or (r.match_norm in r.orig_norm) or (r.orig_norm == r.match_norm), axis=1)
+  n_similar = df.similar.sum()
+  print(f"\n제목 유사(원제 포함): {n_similar}건 | 한국어화 등 유사도 낮음: {len(df)-n_similar}건")
+  diff = df[~df.similar]
+  print("== 유사도 낮은 샘플 10 ==")
+  for _, r in diff.head(10).iterrows():
+      print(f"  {r.show_title} → {r.matched_title} | {r.genres_ko}")
+  
+  # 유사도 낮은 그룹의 연도 검증
+  d2 = diff[diff.orig_year.notna() & diff.matched_year.notna()]
+  ok2 = ((d2.orig_year - d2.matched_year).abs() <= 2).mean()
+  print(f"\n유사도 낮음 중 연도 검증 가능 {len(d2)}건 중 일치 {ok2*100:.0f}%")
+  
+  # 종합 판단: 연도 불일치(검증 가능한 한) = 오매칭으로 탈락
+  sus_idx = set(suspicious.index)
+  final = df[~df.index.isin(sus_idx)]
+  print(f"\n최종 채택: {len(final)}편 (오매칭 의심 {len(sus_idx)}편 제외)")
+  final.to_csv(NBOUT / "data/processed/genre_missing_justwatch.csv", index=False, encoding="utf-8-sig")
+  print("CSV 갱신 완료 (오매칭 의심 제거)")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/03_justwatch_dedupe.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 03. JustWatch 수집 CSV 중복 정리 (중간 저장 로직의 중복 제거, 마지막 상태 유지)
+  #        + 장르 분포 요약
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1 — requirements.txt 참고
+  #        실행: python scripts/03_justwatch_dedupe.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  OUT = NBOUT / "data/processed/genre_missing_justwatch.csv"
+  
+  df = pd.read_csv(OUT)
+  print("정리 전:", len(df), "행")
+  df = df.drop_duplicates(subset="show_title", keep="last")
+  df = df.sort_values("show_title").reset_index(drop=True)
+  df.to_csv(OUT, index=False, encoding="utf-8-sig")
+  print("정리 후:", len(df), "행")
+  print("매칭 성공:", int(df.has_result.sum()), f"({df.has_result.mean()*100:.0f}%)")
+  
+  print("\n== 장르 분포 (매칭된 것들, shortName 기준) ===")
+  g = df[df.has_result].genres_short.str.split("|").explode()
+  print(g.value_counts().head(15).to_string())
+  
+  print("\n== 매칭 실패 샘플 ==")
+  fail = df[~df.has_result].show_title.tolist()
+  print(fail[:15])
+  
+  print("\n== 매칭 성공 샘플 ==")
+  s = df[df.has_result].head(8)
+  for _, r in s.iterrows():
+      print(f"  {r.show_title} → {r.matched_title} ({r.matched_year}) | {r.genres_ko}")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/04_catalog_genre_update.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 04. JustWatch 장르를 카탈로그에 반영 (IMDb 장르 코드 매핑)
+  #        + 전체 장르 커버리지 재계산 + 언어장벽 장르별 통과율 재계산
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/04_catalog_genre_update.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  # JustWatch shortName → IMDb 장르 태그 매핑
+  JW2IMDB = {
+      "drm": "Drama", "cmy": "Comedy", "act": "Action", "trl": "Thriller",
+      "crm": "Crime", "rma": "Romance", "fml": "Family", "ani": "Animation",
+      "fnt": "Fantasy", "doc": "Documentary", "rly": "Reality-TV", "scf": "Sci-Fi",
+      "hrr": "Horror", "hst": "History", "wes": "Western", "war": "War",
+      "spo": "Sport", "msc": "Music", "mys": "Mystery", "bio": "Biography",
+      "adn": "Adventure", "kid": "Kids",
+  }
+  NOT_GENRE = {"eur"}  # 유럽에서 제작 — 장르 아님
+  
+  jw = pd.read_csv(ROOT / "data/processed/genre_missing_justwatch.csv")
+  jw = jw[jw.has_result]
+  
+  def jw_to_imdb(s):
+      out = []
+      for c in str(s).split("|"):
+          c = c.strip()
+          if c in NOT_GENRE:
+              continue
+          if c in JW2IMDB:
+              out.append(JW2IMDB[c])
+      return ",".join(sorted(set(out)))
+  
+  jw["genres_filled"] = jw.genres_short.map(jw_to_imdb)
+  n_unmapped = (jw.genres_filled == "").sum()
+  print(f"매핑 성공: {(jw.genres_filled!='').sum()}편 | 매핑 실패(미등록 코드만): {n_unmapped}편")
+  
+  # ---- catalog 갱신 ----
+  cat = pd.read_csv(ROOT / "data/interim/netflix_titles_catalog.csv")
+  cat["genre_source"] = cat.imdb_genres.fillna("").astype(str).str.strip().ne("").map({True: "imdb", False: ""})
+  fill_map = dict(zip(jw.show_title, jw.genres_filled))
+  mask = cat.imdb_genres.fillna("").astype(str).str.strip().eq("") & cat.show_title.isin(fill_map)
+  cat.loc[mask, "imdb_genres"] = cat.loc[mask, "show_title"].map(fill_map)
+  cat.loc[mask & cat.imdb_genres.ne(""), "genre_source"] = "justwatch"
+  cat.to_csv(ROOT / "data/interim/netflix_titles_catalog.csv", index=False, encoding="utf-8-sig")
+  print(f"catalog 갱신: {mask.sum()}편 채움 | genre_source 열 추가")
+  
+  # ---- 커버리지 재계산 ----
+  c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+  c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+  c_all = pd.concat([c_old, c_new]).drop_duplicates()
+  titles = sorted(c_all.show_title.unique())
+  gen_all = cat.set_index("show_title").imdb_genres.fillna("").astype(str).str.strip()
+  cov = sum(1 for t in titles if gen_all.get(t, "")) / len(titles) * 100
+  print(f"\n장르 커버리지: {cov:.1f}% (기존 93.2%) — 미확보 {sum(1 for t in titles if not gen_all.get(t,''))}편")
+  
+  # ---- 언어장벽 장르표 재계산 (결측분 반영) ----
+  g_old = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=",")
+  g_new = pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")
+  g_all = pd.concat([g_old, g_new]).drop_duplicates()
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  hits = set(g_all.show_title.unique())
+  g_all["lang_cat"] = g_all.category.str.contains("Non-English").map({True: "비영어", False: "영어"})
+  lang_sets = g_all.groupby("show_title").lang_cat.apply(set)
+  only_ne = {t for t, s in lang_sets.items() if s == {"비영어"}}
+  no_country = hits - set(c_all.show_title.unique())
+  pop_ne = only_ne - no_country
+  ever = c_all.groupby("show_title").country_name.apply(set)
+  entered_ne = ever.loc[ever.index.isin(pop_ne)].apply(lambda cs: bool(cs & EN_MARKETS))
+  
+  ne_titles = pd.Series(sorted(pop_ne), name="show_title")
+  df_ne = pd.DataFrame({"show_title": ne_titles.values})
+  df_ne["genres"] = df_ne.show_title.map(gen_all)
+  df_ne["entered_en"] = df_ne.show_title.map(entered_ne)
+  df_ne_cov = df_ne.genres.str.strip().ne("").mean() * 100
+  print(f"비영어 표본 {len(pop_ne)}편의 장르 커버: {df_ne_cov:.1f}%")
+  df_ne = df_ne[df_ne.genres.str.strip() != ""]
+  df_ne["장르"] = df_ne.genres.apply(lambda s: [t.strip() for t in s.split(",") if t.strip()])
+  ex = df_ne.explode("장르")
+  gstat = ex.groupby("장르").agg(표본=("entered_en", "size"), 영어권진입률=("entered_en", "mean"))
+  gstat["영어권진입률"] = (gstat.영어권진입률 * 100).round(1)
+  gstat = gstat[gstat.표본 >= 50].sort_values("영어권진입률", ascending=False).reset_index()
+  gstat[["장르", "표본", "영어권진입률"]].to_csv(NBOUT / "data/processed/language_barrier_by_genre.csv", index=False, encoding="utf-8-sig")
+  print("\n== 재계산된 장르별 영어권 통과율 ==")
+  print(gstat.to_string(index=False))
+
+  ── [설명] ──
+  **원본 코드** — `scripts/06_genre_missing_signal_check.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 06. 장르 결측 그룹 vs 장르 확보 그룹 실측 비교
+  #        (글로벌 히트율 10.9% vs 29.9%, 평균 데뷔 규모 3.8 vs 15.1개국)
+  #        — 장르 "결측"이 무작위가 아니라 저인지도 작품을 대변하는 신호임을 검증
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/06_genre_missing_signal_check.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+  c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+  c_all = pd.concat([c_old, c_new]).drop_duplicates()
+  g_all = pd.concat([
+      pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=","),
+      pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")]).drop_duplicates()
+  
+  hits = set(g_all.show_title.unique())
+  cat = pd.read_csv(ROOT / "data/interim/netflix_titles_catalog.csv")
+  gen = cat.set_index("show_title").imdb_genres.fillna("").astype(str).str.strip()
+  
+  titles = pd.DataFrame({"show_title": sorted(c_all.show_title.unique())})
+  titles["has_genre"] = titles.show_title.map(gen).fillna("").str.strip().ne("")
+  titles["is_hit"] = titles.show_title.isin(hits).astype(int)
+  cnt = c_all.groupby("show_title").country_name.nunique()
+  titles["국가수"] = titles.show_title.map(cnt)
+  
+  g = titles.groupby("has_genre").agg(
+      작품수=("show_title", "size"),
+      글로벌히트율=("is_hit", "mean"),
+      평균진입국가수=("국가수", "mean"))
+  g.index = ["결측(장르 미확보)", "장르 확보"]
+  g["글로벌히트율"] = (g["글로벌히트율"] * 100).round(1)
+  g["평균진입국가수"] = g["평균진입국가수"].round(1)
+  print(g.to_string())
+
+  ── [설명] ──
+  ### 실행 결과 해설 — 보고서 수치와의 관계
+  
+  - **커버리지**: 카탈로그 갱신 결과 **99.7%(기존 93.2%)·미확보 43편** — 보고서 01장 수치와 일치한다.
+  - **결측 신호 검증 수치가 다른 이유**: 보고서의 "결측 작품 히트율 10.9% vs 확보 29.9%"는 **JustWatch 보완 전(결측 853편 시점)** 비교다.
+    이 노트북은 보완이 이미 끝난 현재 데이터로 다시 실행했기 때문에 결측 43편 vs 확보 12,443편 기준(2.3% vs 28.7%)으로 나온다.
+    즉 코드는 동일하고, **재실행 시점의 데이터 상태가 다른 것**이다. 853편 시점의 원래 비교는 제출 당시 실행 기록에 있다.
+
+
+
+======================================================================
+  📓 04_언어장벽_분석
+  (언어 장벽 — 교차 매트릭스·통과율)
+======================================================================
+
+  ── [설명] ──
+  # 언어·장르 장벽 분석
+  
+  **용도** — 출신 언어(글로벌 차트 카테고리 판정)× 타깃 시장 진입률 매트릭스를 계산하고(비영어 히트의 영어권 통과율 23.8%), 표본 산출 과정과 판정 기준을 검증하며, 장르별 통과율 그림을 생성한다.
+  
+  **보고서 대응** — 보고서 EDA 3 '언어·장르 장벽' 전체(영어권 정의와 표본 · 매트릭스 표 · 그림 4)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `scripts/05_language_crossing_recalc.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 05. 언어 교차 매트릭스(12행) 최종 재계산
+  #        출신언어 = 글로벌 차트 카테고리(English/Non-English) 판정,
+  #        혼합 카테고리 8편·국가 차트 미진입 19편 제외 → 영어 1,734 / 비영어 1,824
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/05_language_crossing_recalc.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  g_all = pd.concat([
+      pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=","),
+      pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")]).drop_duplicates()
+  c_all = pd.concat([
+      pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252"),
+      pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")]).drop_duplicates()
+  
+  cc = pd.read_csv(ROOT / "references/country_continent.csv")
+  CONT = dict(zip(cc.country_name, cc["대륙"]))
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  
+  hits = set(g_all.show_title.unique())
+  c_titles = set(c_all.show_title.unique())
+  g_all["lang_cat"] = g_all.category.str.contains("Non-English").map({True: "비영어", False: "영어"})
+  lang_sets = g_all.groupby("show_title").lang_cat.apply(set)
+  only_en = {t for t, s in lang_sets.items() if s == {"영어"}}
+  only_ne = {t for t, s in lang_sets.items() if s == {"비영어"}}
+  no_country = hits - c_titles
+  pop_en = only_en - no_country
+  pop_ne = only_ne - no_country
+  
+  ever = c_all.groupby("show_title").country_name.apply(set)
+  
+  # ---- cmat: 기존 표 구조(6 타깃 그룹 × 2 출신 = 12행) 유지 ----
+  targets = {"영어권": EN_MARKETS}
+  for k, name in [("유럽", "유럽(비영어)"), ("아시아", "아시아"), ("남미", "남미"),
+                  ("아프리카", "아프리카"), ("오세아니아", "오세아니아(비영어)")]:
+      targets[name] = {c for c in CONT if CONT[c] == k and c not in EN_MARKETS}
+  
+  rows = []
+  for origin, pop in [("영어", pop_en), ("비영어", pop_ne)]:
+      pop_ever = ever.loc[ever.index.isin(pop)]
+      for tname, grp in targets.items():
+          rate = pop_ever.apply(lambda cs: bool(cs & grp)).mean() * 100
+          rows.append({"출신언어": origin, "타깃시장": tname, "진입률": round(rate, 1), "표본": len(pop)})
+  cmat = pd.DataFrame(rows)
+  cmat.to_csv(NBOUT / "data/processed/language_crossing_matrix.csv", index=False, encoding="utf-8-sig")
+  print("== cmat (12행) ==")
+  print(cmat.to_string(index=False))
+  ne_en = cmat[(cmat.출신언어 == "비영어") & (cmat.타깃시장 == "영어권")].진입률.iloc[0]
+  en_ne = cmat[(cmat.출신언어 == "영어") & (cmat.타깃시장.isin(["유럽(비영어)", "아시아", "남미", "아프리카", "오세아니아(비영어)"]))].진입률.mean()
+  print(f"\n지표: 비영어→영어권 {ne_en}% | 영어→비영어권 5그룹 평균 {en_ne:.1f}%")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/08_crossing_sample_verify.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 08. 언어 교차 표본(영어 1,734 / 비영어 1,824, 합 3,558) 산출 과정 재현
+  #        글로벌 히트 3,585편 중 혼합 카테고리 8편·국가 차트 미진입 19편 제외 검증
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/08_crossing_sample_verify.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  g_old = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=",")
+  c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+  g_new = pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")
+  c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+  g_all = pd.concat([g_old, g_new]).drop_duplicates()
+  c_all = pd.concat([c_old, c_new]).drop_duplicates()
+  
+  hits = set(g_all.show_title.unique())
+  c_titles = set(c_all.show_title.unique())
+  g_all["lang_cat"] = g_all.category.str.contains("Non-English").map({True: "비영어", False: "영어"})
+  lang_sets = g_all.groupby("show_title").lang_cat.apply(set)
+  
+  only_en = {t for t, s in lang_sets.items() if s == {"영어"}}
+  only_ne = {t for t, s in lang_sets.items() if s == {"비영어"}}
+  both = {t for t, s in lang_sets.items() if s == {"영어", "비영어"}}
+  no_country = hits - c_titles
+  print("국가 차트 미등장:", len(no_country))
+  print("혼합 카테고리(둘 다 등장):", len(both), sorted(both))
+  
+  measurable = (only_en | only_ne) - no_country
+  print("\n영어 카테고리 표본:", len(only_en - no_country))
+  print("비영어 카테고리 표본:", len(only_ne - no_country))
+  print("합계:", len(measurable))
+  print("\n→ cmat 표본: 영어 1,734 / 비영어 1,824 (합 3,558) | 현재 데이터 기준 글로벌 히트", len(hits))
+
+  ── [설명] ──
+  **원본 코드** — `scripts/09_language_category_verify.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 09. 출신 언어 판정 기준 검증 — 데뷔 국가 기준이 아니라
+  #        글로벌 차트 카테고리(English/Non-English) 기준임을 입증
+  #        (데뷔 국가 기준으로는 영어 647/비영어 2,801 — cmat의 1,734/1,824와 불일치)
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/09_language_category_verify.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  g_old = pd.read_csv(ROOT / "data/raw/all-weeks-global.csv", sep=",")
+  c_old = pd.read_csv(ROOT / "data/raw/all-weeks-countries.csv", sep=",", encoding="cp1252")
+  g_new = pd.read_csv(ROOT / "data/raw/all-weeks-global_2026-11-11.tsv", sep="\t")
+  c_new = pd.read_csv(ROOT / "data/raw/all-weeks-countries_2026-11-11.tsv", sep="\t")
+  c_all = pd.concat([c_old, c_new]).drop_duplicates()
+  g_all = pd.concat([g_old, g_new]).drop_duplicates()
+  
+  hits = set(g_all.show_title.unique())
+  c_titles = set(c_all.show_title.unique())
+  covered = hits & c_titles
+  
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  
+  # 데뷔 국가 기준(반례 검증용)
+  first_entry = c_all.sort_values("week").groupby("show_title").agg(
+      debut_country=("country_name", "first"), debut_week=("week", "first"))
+  sub = first_entry.loc[first_entry.index.isin(covered)]
+  lang2 = sub.debut_country.isin(EN_MARKETS).map({True: "영어", False: "비영어"})
+  print("데뷔 국가 기준:", lang2.value_counts().to_dict(), "← cmat와 불일치 (채택하지 않은 기준)")
+  
+  # 채택 기준: 글로벌 차트 카테고리
+  g_all["lang_cat"] = g_all.category.str.contains("Non-English").map({True: "비영어", False: "영어"})
+  lang_sets = g_all.groupby("show_title").lang_cat.apply(set)
+  only_en = {t for t, s in lang_sets.items() if s == {"영어"}}
+  only_ne = {t for t, s in lang_sets.items() if s == {"비영어"}}
+  both = {t for t, s in lang_sets.items() if s == {"영어", "비영어"}}
+  no_country = hits - c_titles
+  pop_en = only_en - no_country
+  pop_ne = only_ne - no_country
+  print("\n채택 기준(카테고리): 영어", len(pop_en), "/ 비영어", len(pop_ne), "/ 혼합 제외", len(both),
+        "/ 미진입 제외", len(no_country))
+  print("→ cmat 표본(영어 1,734 / 비영어 1,824)과 일치")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/13_genre_chart.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 13. 장르별 영어권 통과율 그래프 생성 (18_genre_barrier.png)
+  #        language_barrier_by_genre.csv 기반 가로 막대그래프 — 전체 평균 23.8% 점선,
+  #        레드 = 통과율 30% 이상(긴밀감 장르), 회색 = 18% 미만
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, matplotlib 3.11.2 — requirements.txt 참고
+  #        (한국어 렌더링: Malgun Gothic)
+  #        실행: python scripts/13_genre_chart.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  FIG = NBOUT_F
+  
+  df = pd.read_csv(ROOT / "data/processed/language_barrier_by_genre.csv")
+  KO = {"Drama": "드라마", "Comedy": "코미디", "Action": "액션", "Thriller": "스릴러", "Crime": "범죄",
+        "Romance": "로맨스", "Family": "가족", "Animation": "애니메이션", "Fantasy": "판타지",
+        "Documentary": "다큐멘터리", "Reality-TV": "리얼리티", "Sci-Fi": "SF", "Horror": "호러",
+        "History": "역사", "Mystery": "미스터리", "Biography": "전기", "Adventure": "어드벤처"}
+  df["label"] = df.장르.map(lambda g: f"{KO.get(g, g)} ({g})")
+  df = df.sort_values("영어권진입률", ascending=True)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  fig, ax = plt.subplots(figsize=(8.8, 5.6), dpi=160)
+  colors = ["#e50914" if r >= 30 else ("#c9c9c9" if r < 18 else "#888888") for r in df.영어권진입률]
+  ax.barh(range(len(df)), df.영어권진입률, height=0.62, color=colors, zorder=3)
+  ax.set_yticks(range(len(df)))
+  ax.set_yticklabels(df.label, fontsize=10.5)
+  ax.set_xlim(0, 40)
+  ax.set_xlabel("비영어 출신 히트의 영어권 차트 진입률 (%)", fontsize=10, color="#555")
+  for i, (rate, n_) in enumerate(zip(df.영어권진입률, df.표본)):
+      ax.text(rate + 0.3, i, f"{rate:.1f}%  (표본 {n_:,})", va="center", fontsize=9.5,
+              fontweight="bold", color="#141414")
+  ax.axvline(23.8, color="#999", lw=1.4, ls="--", zorder=2)
+  ax.text(23.9, len(df) - 0.4, "전체 평균 23.8%", fontsize=9.5, color="#666")
+  ax.grid(axis="x", color="#eee", zorder=0)
+  for s in ["top", "right", "left"]:
+      ax.spines[s].set_visible(False)
+  ax.spines["bottom"].set_color("#ccc")
+  ax.tick_params(left=False, bottom=False)
+  fig.tight_layout()
+  fig.savefig(FIG / "18_genre_barrier.png", facecolor="white", bbox_inches="tight")
+  plt.close(fig)
+  print("그래프 생성 완료: 18_genre_barrier.png")
+
+  ── [설명] ──
+  ### 보고서 인사이트 수치 산출 — 장르별 영어권 통과율 상위·하위
+  
+  인사이트 4번("미스터리·스릴러·범죄 32~34%는 낮은 벽, 코미디·로맨스 15~16%는 높은 벽")의 근거 수치.
+
+  ── [코드] ──
+  gb = pd.read_csv(ROOT / "data/processed/language_barrier_by_genre.csv")
+  gb = gb.sort_values("영어권진입률", ascending=False)
+  print("== 통과율 상위 5 / 하위 3 ==")
+  print(gb.head(5).to_string(index=False))
+  print(gb.tail(3).to_string(index=False))
+  print(f"전체 평균: {gb['영어권진입률'].mean():.1f}%")
+
+
+
+======================================================================
+  📓 05_시장파워와_미러
+  (시장 파워와 미러 — 동시진입률·파워 그림·NNLS·취향 지도)
+======================================================================
+
+  ── [설명] ──
+  # 시장 파워와 미러 분리
+  
+  **용도** — 글로벌 차트 작품이 같은 주에 국가 차트에도 오르는 비율(동시진입률 — 파나마 미러 발견의 출발점)을 계산하고, 누적 vs 기간별 파워 기준 차이를 검증하며, 파워 상위 8개국·연도별 파워 이동 그림과 NNLS v3 결과 정합성을 확인한다.
+  
+  **보고서 대응** — 보고서 '나라별 영향력에서의 문제 발견' + 그림 1 · EDA 2 시장 파워와 미러(그림 2·3) · 미러 효과 분리 박스
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `그림 1 재현 코드 (11_weekly_country_coupling_v2)`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """그림 1 재생성: 동시진입률 상위 14개국 · x축 35~45(1단위 눈금) · 국가명 한글"""
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  d = pd.read_csv(ROOT / "data/processed/weekly_country_coupling.csv")
+  top = d.sort_values("동시진입률", ascending=False).head(14)
+  
+  KO = {
+      "Panama": "파나마", "Portugal": "포르투갈", "Luxembourg": "룩셈부르크",
+      "Paraguay": "파라과이", "Uruguay": "우루과이", "Chile": "칠레",
+      "Venezuela": "베네수엘라", "Costa Rica": "코스타리카", "Argentina": "아르헨티나",
+      "Switzerland": "스위스", "Colombia": "콜롬비아", "Mexico": "멕시코",
+      "Hungary": "헝가리", "United Arab Emirates": "아랍에미리트",
+      "Singapore": "싱가포르", "Malaysia": "말레이시아", "Hungary ": "헝가리",
+  }
+  names = [KO.get(c, c) for c in top.country_name]
+  vals = (top["동시진입률"] * 100).round(1)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  
+  fig, ax = plt.subplots(figsize=(8.2, 5.6))
+  y = range(len(names))[::-1]  # 1위가 맨 위
+  b = ax.barh(list(y), vals, color="#e50914", height=0.62)
+  for yi, v in zip(y, vals):
+      ax.text(v + 0.12, yi, f"{v:.1f}", va="center", fontsize=10.5, color="#333")
+  ax.set_yticks(list(y))
+  ax.set_yticklabels(names, fontsize=11)
+  ax.set_xlim(35, 45)
+  ax.set_xticks(range(35, 46, 1))
+  ax.set_xlabel("해당 국가 차트에도 동시 진입한 비율(%)", fontsize=11)
+  ax.set_title("글로벌 Top 10 작품-주 중 해당 국가 차트에도 진입한 비율(%) 상위 14개국",
+               fontsize=13, fontweight="bold", pad=10)
+  ax.spines[["top", "right"]].set_visible(False)
+  ax.grid(axis="x", linestyle=":", alpha=0.4)
+  ax.set_axisbelow(True)
+  plt.tight_layout()
+  out = NBOUT / "figures" / "11_weekly_country_coupling_v2.png"
+  plt.savefig(out, dpi=150, bbox_inches="tight")
+  plt.show()
+  print("저장:", out)
+  print("국가/값:")
+  for n, v in zip(names, vals):
+      print(f"  {n}: {v:.1f}")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/07_power_basis_check.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 07. 누적 파워셰어(그림 2 기준) vs 기간별 파워(그림 3 기준) 차이 검증
+  #        미국: 누적 20.14% (1위) vs 2026H1 13.4% (4위) — 두 그림의 기준 차이 입증
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/07_power_basis_check.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  p = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  us = p[p.country == "United States"].iloc[0]
+  print("== 그림 2 기준: 전 기간(281주) 누적 추정 ==")
+  print(f"미국 나라파워셰어: {us['나라파워셰어']*100:.2f}%  (전체 1위)")
+  
+  ry = pd.read_csv(ROOT / "data/processed/market_power_rolling_yearly.csv", index_col=0)
+  print("\n== 그림 3 기준: 기간별 각각 재추정 (각 시점 합계 100%) ==")
+  col = ry["2026H1"].sort_values(ascending=False)
+  for k, v in col.head(5).items():
+      print(f"  {k}: {v*100:.1f}%")
+  print("2026H1 합계:", round(ry['2026H1'].sum()*100, 1), "%")
+  
+  # 미국: 기간별 값의 기간가중 평균 vs 누적값
+  w = {"2021H2": 0.5, "2022": 1.0, "2023": 1.0, "2024": 1.0, "2025": 1.0, "2026H1": 0.5}
+  us_vals = ry.loc["미국"]
+  num = sum(us_vals[c] * 100 * w[c] for c in w)
+  den = sum(w.values())
+  print(f"\n미국 기간별 값: {[f'{us_vals[c]*100:.1f}' for c in w]}")
+  print(f"미국 기간가중 평균: {num/den:.1f}%  vs  누적 추정 20.14%")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/12_power_charts.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 12. 시장 파워 그래프 생성
+  #        16_power_top8.png (국가별 파워셰어 상위 8개국 막대그래프)
+  #        17_power_trend.png (블록별 파워셰어 연도별 추이 선그래프)
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, matplotlib 3.11.2 — requirements.txt 참고
+  #        (한국어 렌더링: Malgun Gothic)
+  #        실행: python scripts/12_power_charts.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  FIG = NBOUT_F
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  
+  RED, DARK, GRAY, LGRAY = "#e50914", "#141414", "#7a7a7a", "#c9c9c9"
+  
+  # ===== 1) 국가별 시장 파워 상위 8개국 =====
+  names = ["미국", "인도", "브라질", "캐나다", "일본", "멕시코", "인도네시아", "대한민국"]
+  vals = [20.14, 18.51, 16.45, 9.13, 8.83, 7.90, 3.72, 3.69]
+  dens = [3.03, 0.66, 4.05, 11.86, 3.79, 3.12, 0.68, 3.76]
+  
+  fig, ax = plt.subplots(figsize=(8.6, 4.3), dpi=160)
+  y = range(len(names))
+  ax.barh(y, vals, height=0.62, color=[RED] * 6 + [LGRAY] * 2, zorder=3)
+  ax.set_yticks(list(y))
+  ax.set_yticklabels(names, fontsize=11)
+  ax.invert_yaxis()
+  ax.set_xlim(0, 24)
+  ax.set_xlabel("글로벌 시청량 중 그 시장이 실제로 만드는 비중 (%, 파워셰어)", fontsize=9.5, color="#555")
+  for i, (v, d) in enumerate(zip(vals, dens)):
+      ax.text(v + 0.25, i, f"{v:.1f}%", va="center", fontsize=10, fontweight="bold", color=DARK)
+      ax.text(v + 2.6, i, f"밀도 {d}", va="center", fontsize=8.5, color=GRAY)
+  ax.grid(axis="x", color="#eee", zorder=0)
+  for s in ["top", "right", "left"]:
+      ax.spines[s].set_visible(False)
+  ax.spines["bottom"].set_color("#ccc")
+  ax.tick_params(left=False, bottom=False)
+  fig.tight_layout()
+  fig.savefig(FIG / "16_power_top8.png", facecolor="white", bbox_inches="tight")
+  plt.close(fig)
+  
+  # ===== 2) 시간에 따른 파워 이동 =====
+  periods = ["2021H2", "2022", "2023", "2024", "2025", "2026H1"]
+  series = {
+      "미국":     ([19.7, 7.1, 18.4, 15.1, 21.8, 13.4], DARK),
+      "인도":     ([12.1, 27.4, 18.6, 20.7, 19.4, 23.7], RED),
+      "브라질":   ([18.8, 13.7, 13.9, 14.6, 18.6, 21.3], "#b20710"),
+      "캐나다":   ([20.2, 7.3, 7.1, 8.1, 7.7, 8.4], GRAY),
+      "동아시아": ([0.0, 13.8, 13.1, 20.2, 12.0, 15.2], "#ff7562"),
+      "멕시코":   ([16.6, 11.2, 12.2, 8.6, 1.5, 1.4], LGRAY),
+  }
+  fig, ax = plt.subplots(figsize=(8.6, 4.5), dpi=160)
+  x = range(len(periods))
+  offsets = {"인도": 0.5, "브라질": -0.5, "동아시아": 0.7, "미국": -0.7, "캐나다": 0.3, "멕시코": -0.3}
+  for name, (v, c) in series.items():
+      ax.plot(list(x), v, color=c, lw=2.2, marker="o", ms=4.5, zorder=3)
+      ax.annotate(f"{name} {v[-1]:.1f}", (len(periods) - 1 + 0.08, v[-1] + offsets.get(name, 0)),
+                  fontsize=9, color=c, va="center", fontweight="bold")
+  ax.set_xticks(list(x))
+  ax.set_xticklabels(periods, fontsize=10)
+  ax.set_xlim(-0.3, len(periods) - 0.25)
+  ax.set_ylim(-1.5, 29)
+  ax.set_ylabel("블록별 파워셰어 (%)", fontsize=9.5, color="#555")
+  ax.grid(axis="y", color="#eee", zorder=0)
+  for s in ["top", "right"]:
+      ax.spines[s].set_visible(False)
+  ax.spines["left"].set_color("#ccc")
+  ax.spines["bottom"].set_color("#ccc")
+  ax.tick_params(left=False, bottom=False)
+  fig.tight_layout()
+  fig.savefig(FIG / "17_power_trend.png", facecolor="white", bbox_inches="tight")
+  plt.close(fig)
+  print("그래프 2장 생성 완료: 16_power_top8.png, 17_power_trend.png")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/16_market_power_v3_verify.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 16. 시장 파워 v3 — 방법론 기록 + 결과 파일 내부 정합성 검증
+  #
+  # [방법론 (원 설계 기록)]
+  #   ① 작품 고정효과 통제: 같은 작품이 여러 나라 차트에 오르는 패턴을 이용해
+  #      "작품 자체의 인기 수준"을 통제한 상태에서 나라별 기여를 분리
+  #   ② NNLS 블록 분해: 94개국을 14개 블록(미국·캐나다·인도·브라질·동아시아 등)으로
+  #      묶고, 각 블록이 글로벌 시청량을 만드는 비중을 비음수 최소제곱(NNLS)으로 추정
+  #      — 음수를 허용하지 않으므로 "파워는 있거나 0"
+  #   ③ 리프트(미러) 분리: 각 나라 차트가 글로벌 차트를 따라오는 정도(리프트)를
+  #      따로 계산해 파워(시청량 창출)와 미러(따라잡기)를 분리
+  #   ④ 연도별 재추정 검증: 2021H2~2026H1을 기간별로 다시 추정해 추세 확인
+  #
+  # [주의] 원본 구현 코드는 미보존. 본 스크립트는 결과 파일의 내부 정합성을 검증하는
+  #        재현 코드이며, NNLS 추정 자체를 다시 수행하지는 않는다.
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4 — requirements.txt 참고
+  #        실행: python scripts/16_market_power_v3_verify.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import pandas as pd
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  # ---- 1) 국가별 파워 (country_market_power.csv) ----
+  p = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  print("== country_market_power.csv ==")
+  print(f"행 수(국가): {len(p)} | 컬럼: {list(p.columns)[:8]}...")
+  total_share = p.나라파워셰어.sum()
+  print(f"나라파워셰어 합계: {total_share:.4f} (1.0 = 글로벌 시청량 100%)")
+  print(f"상위 5개국: {p.nlargest(5, '나라파워셰어')[['country', '나라파워셰어']].to_string(index=False)}")
+  
+  # ---- 2) 밀도 열 정합성 (파워/인구비 연도별 존재 확인) ----
+  dens_cols = [c for c in p.columns if "파워/인구비" in c]
+  print(f"\n밀도 열 (파워/인구비): {dens_cols}")
+  
+  # ---- 3) 사분면 분포 (파워 × 미러 분류 결과) ----
+  if "사분면" in p.columns:
+      print(f"\n사분면 분포: {p.사분면.value_counts().to_dict()}")
+  
+  # ---- 4) 연도별 롤링 추정 (market_power_rolling_yearly.csv) ----
+  ry = pd.read_csv(ROOT / "data/processed/market_power_rolling_yearly.csv", index_col=0)
+  print("\n== market_power_rolling_yearly.csv ==")
+  print(f"블록 {len(ry)}개 × 기간 {len(ry.columns)}개")
+  for c in ry.columns:
+      s = ry[c].sum()
+      flag = "OK" if abs(s - 1.0) < 0.01 else "확인 필요"
+      print(f"  {c}: 합계 {s*100:.1f}% [{flag}] — 각 시점 합계 100% 검증")
+  
+  # ---- 5) 14개 블록 정의 (market_power_blocks_v3.csv) ----
+  blocks = pd.read_csv(ROOT / "data/processed/market_power_blocks_v3.csv")
+  print(f"\n== market_power_blocks_v3.csv (블록 정의) ==")
+  print(f"행 수: {len(blocks)} | 컬럼: {list(blocks.columns)}")
+  
+  # ---- 6) 순수 미러 시장 (파워 ≈ 0 & 리프트 높음) ----
+  mirror = p[(p.나라파워셰어 < 0.001) & (p["리프트(미러)"] >= 3.9)]
+  print(f"\n순수 미러 시장 (파워<0.1% & 리프트≥3.9): {len(mirror)}개국")
+  print(mirror[["country", "리프트(미러)"]].head(8).to_string(index=False))
+
+  ── [설명] ──
+  ### 보고서 수치 산출 — 순수 미러 41개국·시장 밀도(캐나다 11.9 vs 인도 0.66)
+  
+  미러 분리 박스의 "순수 미러 시장 41개국"과 그림 2 캡션의 파워/인구 밀도 수치를 결과 파일에서 산출한다.
+  (NNLS 추정 본체는 미보존 — 방법론은 scripts/16 마크다운 기록 + 본 검증으로 근거를 대신한다)
+
+  ── [코드] ──
+  mp = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  q = mp["사분면"].value_counts()
+  print("== 사분면별 국가 수 ==")
+  print(q.to_string())
+  mirror = mp[mp["사분면"] == "순수미러"].sort_values("리프트(미러)", ascending=False)
+  print(f"\n순수 미러 시장 {len(mirror)}개국 — 리프트 상위 10:")
+  print(mirror[["country", "리프트(미러)"]].head(10).to_string(index=False))
+  dens = mp.set_index("country")["파워/인구비_2024"]
+  print(f"\n파워/인구 밀도 — 캐나다 {dens['Canada']:.1f} vs 인도 {dens['India']:.2f} vs 호주 {dens['Australia']:.1f}")
+  print("파워 상위 8개국(그림 2 기준):")
+  print(mp.sort_values("나라파워셰어", ascending=False)[["country", "나라파워셰어"]].head(8).to_string(index=False))
+
+  ── [설명] ──
+  ### 모델 B 취향 지도 — 세 개 취향 그룹 시각화
+  
+  94×94 취향 유사도 행렬을 계층적 군집화로 3개 그룹으로 나눠, 국가 이름 없이 그룹 색만으로 묶임을 보여준다.
+
+  ── [코드] ──
+  import numpy as np
+  import pandas as pd
+  from scipy.cluster.hierarchy import linkage, fcluster
+  from scipy.spatial.distance import squareform
+  
+  sim = pd.read_csv(ROOT / "data/processed/country_taste_similarity.csv", index_col=0)
+  cont = pd.read_csv(ROOT / "references/country_continent.csv")
+  CONT = dict(zip(cont.country_name, cont["대륙"]))
+  
+  # 계층적 군집화(ward 연결)로 3개 그룹
+  dist = 1 - sim.to_numpy(float)
+  np.fill_diagonal(dist, 0)
+  dist = (dist + dist.T) / 2
+  Z = linkage(squareform(dist, checks=False), method="ward")
+  labels = fcluster(Z, t=3, criterion="maxclust")
+  order = np.argsort(labels)
+  names = sim.index.to_numpy()[order]
+  labels_sorted = labels[order]
+  mat = sim.to_numpy(float)[np.ix_(order, order)]
+  
+  # 그룹 이름: 구성 기반 (남미+중미 우세=라틴권, 동·남아시아 국가 명단 우세=동·남아시아권, 그 외=서양·중동·아프리카권)
+  EA = {"Japan", "South Korea", "Taiwan", "Hong Kong", "Singapore", "Malaysia",
+        "Indonesia", "Thailand", "Vietnam", "Philippines", "Cambodia", "Myanmar"}
+  grp_names = {}
+  for lab in [1, 2, 3]:
+      idx = np.where(labels_sorted == lab)[0]
+      members = [n for n in names[idx]]
+      regions = [CONT.get(n, "?") for n in members]
+      vc = pd.Series(regions).value_counts()
+      lat = vc.get("남미", 0) + vc.get("중미·카리브", 0)
+      ea = sum(1 for n in members if n in EA)
+      if lat >= 8:
+          grp_names[lab] = "라틴권"
+      elif ea >= 8:
+          grp_names[lab] = "동·남아시아권"
+      else:
+          grp_names[lab] = "서양·중동·아프리카권"
+  
+  import matplotlib.pyplot as plt
+  GROUP_COLORS = ["#e50914", "#221f1f", "#b3b3b3"]
+  fig, ax = plt.subplots(figsize=(8.6, 6.8))
+  im = ax.imshow(mat, cmap="Reds", vmin=0, vmax=1)
+  for lab in [1, 2, 3]:
+      idx = np.where(labels_sorted == lab)[0]
+      ax.add_patch(plt.Rectangle((idx[0] - 0.5, idx[0] - 0.5), len(idx), len(idx),
+                                 fill=False, edgecolor=GROUP_COLORS[lab - 1], lw=2.5))
+      ax.text(len(mat) + 8, (idx[0] + idx[-1]) / 2,
+              f"그룹 {lab}\n{grp_names[lab]}\n{len(idx)}개국", fontsize=10.5, va="center",
+              color=GROUP_COLORS[lab - 1] if GROUP_COLORS[lab - 1] != "#b3b3b3" else "#1a1a1a",
+              fontweight="bold")
+  ax.set_xticks([]); ax.set_yticks([])
+  ax.set_title("국가 취향 유사도 — 세 개 취향 그룹으로 묶인다 (국가명 생략)",
+               fontsize=12.5, color="#1a1a1a", pad=12)
+  for s in ax.spines.values():
+      s.set_visible(False)
+  plt.tight_layout(); plt.savefig(NBOUT_F / "eda_taste_clusters.png", dpi=150); plt.show()
+  
+  for lab in [1, 2, 3]:
+      idx = np.where(labels_sorted == lab)[0]
+      sample = [n for n in names[idx]][:6]
+      print(f"그룹 {lab} ({grp_names[lab]}) — {len(idx)}개국 | 예: {', '.join(sample)}")
+
+
+
+======================================================================
+  📓 06_확산예측_LightGBM
+  (확산 예측 — LightGBM v2→v2.2·35주 시간 분할)
+======================================================================
+
+  ── [설명] ──
+  # 확산 예측 모델링 — LightGBM v2 → v2.2
+  
+  **용도** — 데뷔 발자국+장르+언어권+시장파워 피처(41개)에 시장 밀도 피처를 더한 43피처로 LightGBM을 학습하고, v2.1 언어 피처 실험(기각 사례)과 35주 시간 분할 재검증으로 성능표·발전표(AUC 0.936→0.951)를 산출한다.
+  
+  **보고서 대응** — 보고서 02장 '확산 예측 모델 (LightGBM)' 전체 — 모델 발전 과정표, 최종 모델 성능표
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  ### 1단계 — v2 기준선 학습(41피처, 발자국+장르+언어권+시장파워)
+
+  ── [설명] ──
+  **원본 코드** — `학습 스크립트(v2)`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """LightGBM v2: 발자국 + 장르 + 언어권 + 시장파워 -> 확산 예측
+  학습: 데뷔 ~2023 완결 작품 | 테스트: 2024+ 신작 | 베이스라인: 로지스틱(발자국만)"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import lightgbm as lgb
+  from sklearn.linear_model import LogisticRegression, Ridge
+  from sklearn.metrics import (roc_auc_score, accuracy_score, precision_score, recall_score,
+                               f1_score, mean_absolute_error, r2_score)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  PWR = pow_df.나라파워셰어.to_dict()
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  PBY = {r.country_name: {y: r[str(y)] for y in range(2021, 2027)} for _, r in pop.iterrows()}
+  
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  old_g = pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"])
+  new_g = pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  comb_g = pd.concat([old_g, new_g], ignore_index=True)
+  comb["대륙"] = comb.country_name.map(CONT)
+  g_set = set(comb_g.show_title.unique())
+  
+  # 장르 태그
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2023-12-31")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[f_ >= pd.Timestamp("2024-01-07")].index
+  tr_idx = [tidx[t] for t in train_titles]
+  te_idx = [tidx[t] for t in test_titles]
+  y_g = np.array([t in g_set for t in titles], dtype=int)
+  y_six_map = comb.groupby("show_title").대륙.nunique()
+  y_six = np.array([y_six_map.get(t, 0) == 6 for t in titles], dtype=int)
+  y_r = comb.groupby("show_title").country_name.nunique().reindex(titles).to_numpy().astype(float)
+  print(f"전체 {len(titles)}편 | 학습 {len(train_titles)} | 테스트 {len(test_titles)}")
+  
+  def build_features(t, sel_idx):
+      sel = [titles[i] for i in sel_idx]
+      sub = comb[(comb.offset_wk < t) & (comb.show_title.isin(set(sel)))]
+      f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+      g_ = sub.groupby("show_title")
+      f["진입국가수"] = g_.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g_.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+      f["데뷔영어권"] = [int(bool(set(sub[sub.show_title == t_].country_name) & EN_MARKETS)) for t_ in f.index]
+      f["진입시장파워"] = [sum(PWR.get(c, 0) for c in sub[sub.show_title == t_].country_name.unique()) * 1000
+                       for t_ in f.index]
+      f["진입시장인구_log"] = [np.log1p(sum(PBY.get(c, {}).get(min(max(int(first[t_].year), 2021), 2026), 0) or 0
+                                      for c in sub[sub.show_title == t_].country_name.unique())) for t_ in f.index]
+      # 장르 태그
+      for tag in TAGS:
+          f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+      f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+      return f
+  
+  F_tr4, F_te4 = build_features(4, tr_idx), build_features(4, te_idx)
+  F_tr1, F_te1 = build_features(1, tr_idx), build_features(1, te_idx)
+  y_g_tr, y_g_te = y_g[tr_idx], y_g[te_idx]
+  y_s_tr, y_s_te = y_six[tr_idx], y_six[te_idx]
+  y_r_tr, y_r_te = y_r[tr_idx], y_r[te_idx]
+  print(f"피처 수: {F_tr4.shape[1]}")
+  
+  def lgbm_params(clf=True):
+      p = dict(n_estimators=500, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+               subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      if clf:
+          p["is_unbalance"] = True
+      else:
+          p["n_estimators"] = 600
+      return p
+  
+  rows = []
+  models = {}
+  for t, Ftr, Fte, tag in [(4, F_tr4, F_te4, "4주차"), (1, F_tr1, F_te1, "1주차")]:
+      # 베이스라인 로지스틱 (발자국만 = Model A)
+      for tname, ytr, yte in [("글로벌히트", y_g_tr, y_g_te), ("6대륙도달", y_s_tr, y_s_te)]:
+          lr = LogisticRegression(max_iter=3000, C=1.0, class_weight="balanced").fit(Ftr.to_numpy().astype(float), ytr)
+          pl = lr.predict_proba(Fte.to_numpy().astype(float))[:, 1]
+          rows.append({"스냅샷": tag, "모델": "로지스틱(발자국만)", "target": tname,
+                       "AUC": round(roc_auc_score(yte, pl), 3),
+                       "정확도": round(accuracy_score(yte, (pl>=.5).astype(int)), 3),
+                       "정밀도": round(precision_score(yte, (pl>=.5).astype(int), zero_division=0), 3),
+                       "재현율": round(recall_score(yte, (pl>=.5).astype(int), zero_division=0), 3),
+                       "F1": round(f1_score(yte, (pl>=.5).astype(int), zero_division=0), 3),
+                       "MSE(Brier)": round(((pl-yte)**2).mean(), 4)})
+          # LightGBM v2 (발자국+장르+언어+파워)
+          gm = lgb.LGBMClassifier(**lgbm_params()).fit(Ftr.to_numpy().astype(float), ytr)
+          pg = gm.predict_proba(Fte.to_numpy().astype(float))[:, 1]
+          rows.append({"스냅샷": tag, "모델": "LightGBM v2(+장르+언어+파워)", "target": tname,
+                       "AUC": round(roc_auc_score(yte, pg), 3),
+                       "정확도": round(accuracy_score(yte, (pg>=.5).astype(int)), 3),
+                       "정밀도": round(precision_score(yte, (pg>=.5).astype(int), zero_division=0), 3),
+                       "재현율": round(recall_score(yte, (pg>=.5).astype(int), zero_division=0), 3),
+                       "F1": round(f1_score(yte, (pg>=.5).astype(int), zero_division=0), 3),
+                       "MSE(Brier)": round(((pg-yte)**2).mean(), 4)})
+          models[f"{tag}_{tname}_lgbm"] = gm
+      # 회귀는 아래에서 별도
+  res = pd.DataFrame(rows)
+  
+  # 회귀 (4주차만, LGBMRegressor vs 릿지)
+  rg_r = Ridge(alpha=1.0).fit(F_tr4.to_numpy().astype(float), y_r_tr)
+  pr_r = np.clip(rg_r.predict(F_te4.to_numpy().astype(float)), 0, 94)
+  res.loc[len(res)] = {"스냅샷": "4주차", "모델": "릿지(발자국만)", "target": "국가수회귀",
+                       "AUC": np.nan, "정확도": np.nan, "정밀도": np.nan, "재현율": np.nan, "F1": np.nan,
+                       "MSE(Brier)": np.nan}
+  gm_r = lgb.LGBMRegressor(**{k: v for k, v in lgbm_params(False).items()})
+  gm_r.fit(F_tr4.to_numpy().astype(float), y_r_tr)
+  pg_r = np.clip(gm_r.predict(F_te4.to_numpy().astype(float)), 0, 94)
+  res.loc[len(res)] = {"스냅샷": "4주차", "모델": "LightGBM v2(+장르+언어+파워)", "target": "국가수회귀",
+                       "AUC": np.nan, "정확도": np.nan, "정밀도": np.nan, "재현율": np.nan, "F1": np.nan,
+                       "MSE(Brier)": np.nan}
+  # 회귀 지표를 별도 컬럼 없이 텍스트로
+  print("\n=== 회귀 (최종 국가 수, 4주차) ===")
+  for name, pr_ in [("릿지(발자국만)", pr_r), ("LightGBM v2", pg_r)]:
+      print(f"  {name}: MAE {mean_absolute_error(y_r_te, pr_):.2f}개국 | RMSE {np.sqrt(((pr_-y_r_te)**2).mean()):.2f} | R2 {r2_score(y_r_te, pr_):.3f}")
+  
+  print("\n=== 분류 성능 비교 ===")
+  print(res[res.target != "국가수회귀"].to_string(index=False))
+  res.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\model_v2_lgbm_results.csv", index=False, encoding="utf-8-sig")
+  
+  # SHAP (4주차 글로벌 히트 모델)
+  import shap
+  Xte_np = F_te4.to_numpy().astype(float)
+  explainer = shap.TreeExplainer(models["4주차_글로벌히트_lgbm"])
+  shap_vals = explainer.shap_values(Xte_np, check_additivity=False)
+  sv = shap_vals[1] if isinstance(shap_vals, list) else shap_vals
+  if sv.ndim == 3:
+      sv = sv[:, :, 1]
+  plt.figure(figsize=(9, 7))
+  shap.summary_plot(sv, Xte_np, feature_names=list(F_te4.columns), show=False, max_display=15)
+  plt.title("LightGBM v2 SHAP 요약 (글로벌 히트 예측, 2024+ 테스트)")
+  plt.tight_layout()
+  plt.savefig(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\figures\12_shap_summary.png", dpi=130, bbox_inches="tight")
+  plt.show()
+  print("\nSHAP 저장: reports/figures/12_shap_summary.png")
+  imp = np.abs(sv).mean(axis=0)
+  top = pd.Series(imp, index=F_te4.columns).sort_values(ascending=False).head(12)
+  print("SHAP 중요도 TOP 12:")
+  for k, v in top.items():
+      print(f"  {k:28s} {v:.4f}")
+  
+  bundle = {"model_name": "model_v2_lgbm", "trained_at": pd.Timestamp.now().isoformat(),
+            "task": "발자국+장르+언어권+시장파워 -> 글로벌 히트/6대륙 확산 예측",
+            "feature_names": list(F_tr4.columns), "models": models,
+            "results": res.to_dict(orient="records")}
+  joblib.dump(bundle, r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\models\model_v2_lgbm.joblib")
+  print("모델 저장: models/model_v2_lgbm.joblib")
+
+  ── [설명] ──
+  ### 2단계 — v2.1 언어 피처 실험(성능 저하 → 기각)
+
+  ── [설명] ──
+  **원본 코드** — `학습 스크립트(v2.1 실험)`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """언어 분석 피처 추가 실험: LightGBM v2 (기존) vs v2.1 (+데뷔유형 3분류 + 영어권/비영어권 데뷔 국가수)"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  import lightgbm as lgb
+  from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score
+  
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  PWR = pow_df.나라파워셰어.to_dict()
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  PBY = {r.country_name: {y: r[str(y)] for y in range(2021, 2027)} for _, r in pop.iterrows()}
+  
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  old_g = pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"])
+  new_g = pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  comb_g = pd.concat([old_g, new_g], ignore_index=True)
+  comb["대륙"] = comb.country_name.map(CONT)
+  g_set = set(comb_g.show_title.unique())
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  comb["is_en"] = comb.country_name.map(lambda c: c in EN_MARKETS)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2023-12-31")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[f_ >= pd.Timestamp("2024-01-07")].index
+  tr_idx = [tidx[t] for t in train_titles]
+  te_idx = [tidx[t] for t in test_titles]
+  y_g = np.array([t in g_set for t in titles], dtype=int)
+  y_six = np.array([comb.groupby("show_title").대륙.nunique().get(t, 0) == 6 for t in titles], dtype=int)
+  y_r = comb.groupby("show_title").country_name.nunique().reindex(titles).to_numpy().astype(float)
+  y_g_tr, y_g_te = y_g[tr_idx], y_g[te_idx]
+  y_s_tr, y_s_te = y_six[tr_idx], y_six[te_idx]
+  y_r_tr, y_r_te = y_r[tr_idx], y_r[te_idx]
+  
+  def build_features(t, sel_idx, lang_feat):
+      sel = [titles[i] for i in sel_idx]
+      sub = comb[(comb.offset_wk < t) & (comb.show_title.isin(set(sel)))]
+      f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+      g_ = sub.groupby("show_title")
+      f["진입국가수"] = g_.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g_.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+      f["데뷔영어권"] = [int(bool(set(sub[sub.show_title == t_].country_name) & EN_MARKETS)) for t_ in f.index]
+      f["진입시장파워"] = [sum(PWR.get(c, 0) for c in sub[sub.show_title == t_].country_name.unique()) * 1000 for t_ in f.index]
+      f["진입시장인구_log"] = [np.log1p(sum(PBY.get(c, {}).get(min(max(int(first[t_].year), 2021), 2026), 0) or 0
+                                      for c in sub[sub.show_title == t_].country_name.unique())) for t_ in f.index]
+      for tag in TAGS:
+          f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+      f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+      if lang_feat:
+          dw = sub[sub.offset_wk == 0].groupby("show_title").country_name.nunique()
+          en_cnt = sub[(sub.offset_wk == 0) & sub.is_en].groupby("show_title").country_name.nunique()
+          ne_cnt = sub[(sub.offset_wk == 0) & (~sub.is_en)].groupby("show_title").country_name.nunique()
+          f["데뷔주_영어권국가수"] = en_cnt.reindex(f.index).fillna(0).astype(int)
+          f["데뷔주_비영어권국가수"] = ne_cnt.reindex(f.index).fillna(0).astype(int)
+          f["데뷔주_영어권비중"] = f["데뷔주_영어권국가수"] / f["데뷔주_영어권국가수"].replace(0, np.nan).fillna(0) / np.maximum(dw.reindex(f.index).fillna(1), 1)
+          유형 = []
+          for t_ in f.index:
+              e, n = f.loc[t_, "데뷔주_영어권국가수"], f.loc[t_, "데뷔주_비영어권국가수"]
+              유형.append("다중" if (e > 0 and n > 0) else ("영어권전용" if e > 0 else "비영어권전용"))
+          f["데뷔유형_다중"] = [int(x == "다중") for x in 유형]
+          f["데뷔유형_영어권전용"] = [int(x == "영어권전용") for x in 유형]
+      return f
+  
+  def lgbm_params(clf=True):
+      p = dict(n_estimators=500, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+               subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      if clf:
+          p["is_unbalance"] = True
+      return p
+  
+  rows = []
+  for t in [4, 1]:
+      for lang_feat, label in [(False, "LightGBM v2 (기존)"), (True, "v2.1 (+언어피처)")]:
+          Ftr = build_features(t, tr_idx, lang_feat)
+          Fte = build_features(t, te_idx, lang_feat)
+          for tname, ytr, yte in [("글로벌히트", y_g_tr, y_g_te), ("6대륙도달", y_s_tr, y_s_te)]:
+              m = lgb.LGBMClassifier(**lgbm_params()).fit(Ftr.to_numpy().astype(float), ytr)
+              p = m.predict_proba(Fte.to_numpy().astype(float))[:, 1]
+              yp = (p >= 0.5).astype(int)
+              rows.append({"스냅샷": f"{t}주차", "모델": label, "target": tname,
+                           "AUC": round(roc_auc_score(yte, p), 3),
+                           "정확도": round(accuracy_score(yte, yp), 3),
+                           "정밀도": round(precision_score(yte, yp, zero_division=0), 3),
+                           "재현율": round(recall_score(yte, yp, zero_division=0), 3),
+                           "F1": round(f1_score(yte, yp, zero_division=0), 3),
+                           "MSE(Brier)": round(((p - yte)**2).mean(), 4)})
+  
+  res = pd.DataFrame(rows)
+  print("=== 언어 피처 추가 실험 (동일 테스트셋: 2024+ 신작) ===")
+  print(res.to_string(index=False))
+  res.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\model_v21_langfeat_results.csv", index=False, encoding="utf-8-sig")
+  
+  # 회귀에도 적용
+  Ftr_base = build_features(4, tr_idx, False)
+  Fte_base = build_features(4, te_idx, False)
+  Ftr_lang = build_features(4, tr_idx, True)
+  Fte_lang = build_features(4, te_idx, True)
+  for label, Ftr, Fte in [("기존", Ftr_base, Fte_base), ("+언어피처", Ftr_lang, Fte_lang)]:
+      gm = lgb.LGBMRegressor(n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+                             subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      gm.fit(Ftr.to_numpy().astype(float), y_r_tr)
+      pr = np.clip(gm.predict(Fte.to_numpy().astype(float)), 0, 94)
+      print(f"회귀 {label}: MAE {mean_absolute_error(y_r_te, pr):.2f} | R2 {r2_score(y_r_te, pr):.3f}")
+  print("\n저장: model_v21_langfeat_results.csv")
+
+  ── [설명] ──
+  ### 3단계 — v2.2 시장 밀도 피처 추가(최종 채택)
+
+  ── [설명] ──
+  **원본 코드** — `학습 스크립트(v2.2)`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """LightGBM v2.2: 시장 밀도(연도별 파워/인구비) 피처 추가 실험 + SHAP 갱신"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import lightgbm as lgb
+  from sklearn.metrics import (roc_auc_score, accuracy_score, precision_score, recall_score,
+                               f1_score, mean_absolute_error, r2_score)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  PWR = (pow_df.나라파워셰어 * 1000).to_dict()
+  DENS = {y: pow_df[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  POP24 = pow_df.인구2024.to_dict()
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  PBY = {r.country_name: {y: r[str(y)] for y in range(2021, 2027)} for _, r in pop.iterrows()}
+  
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  old_g = pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"])
+  new_g = pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  comb_g = pd.concat([old_g, new_g], ignore_index=True)
+  comb["대륙"] = comb.country_name.map(CONT)
+  comb["is_en"] = comb.country_name.map(lambda c: c in EN_MARKETS)
+  g_set = set(comb_g.show_title.unique())
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2023-12-31")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[f_ >= pd.Timestamp("2024-01-07")].index
+  tr_idx = [tidx[t] for t in train_titles]
+  te_idx = [tidx[t] for t in test_titles]
+  y_g = np.array([t in g_set for t in titles], dtype=int)
+  six_map = comb.groupby("show_title").대륙.nunique()
+  y_six = np.array([six_map.get(t, 0) == 6 for t in titles], dtype=int)
+  y_r = comb.groupby("show_title").country_name.nunique().reindex(titles).to_numpy().astype(float)
+  print(f"학습 {len(train_titles)} | 테스트 {len(test_titles)}", flush=True)
+  
+  def build(t, sel_idx, dens_feat):
+      sel = [titles[i] for i in sel_idx]
+      sub = comb[(comb.offset_wk < t) & (comb.show_title.isin(set(sel)))].copy()
+      g = sub.groupby("show_title")
+      f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+      f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+      dw = sub[sub.offset_wk == 0]
+      dwg = dw.groupby("show_title")
+      f["데뷔영어권"] = dwg.is_en.max().reindex(f.index).fillna(0).astype(int)
+      f["진입시장파워"] = dw.country_name.map(PWR).groupby(dw["show_title"]).sum().reindex(f.index).fillna(0)
+      sub2 = sub.copy()
+      sub2["yr"] = sub2.first_week.dt.year.clip(2021, 2026).astype(str)
+      sub2 = sub2.merge(pop.melt(id_vars=["country_name"], value_vars=[str(y) for y in range(2021, 2027)],
+                                 var_name="yr", value_name="row_pop"),
+                        on=["country_name", "yr"], how="left")
+      f["진입시장인구_log"] = np.log1p(sub2.groupby("show_title").row_pop.sum().reindex(f.index).fillna(0))
+      for tag in TAGS:
+          f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+      f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+      if dens_feat:
+          # 진입 시장 밀도: 데뷔연도 기준 각 국가의 파워/인구비 합 + 평균
+          dens_rows = {}
+          for t_ in f.index:
+              cs = sub[sub.show_title == t_].country_name.unique()
+              dy = min(max(int(first[t_].year), 2021), 2026)
+              dens_rows[t_] = (sum(DENS[dy].get(c, 0) or 0 for c in cs),
+                               sum(DENS[dy].get(c, 0) or 0 for c in cs) / max(len(cs), 1))
+          f["진입시장밀도합"] = pd.Series({t_: v[0] for t_, v in dens_rows.items()}).reindex(f.index)
+          f["진입시장밀도평균"] = pd.Series({t_: v[1] for t_, v in dens_rows.items()}).reindex(f.index)
+      return f
+  
+  def lgbm_params(clf=True):
+      p = dict(n_estimators=500, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+               subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      if clf:
+          p["is_unbalance"] = True
+      return p
+  
+  rows, models = {}, {}
+  for t in [4, 1]:
+      for tname, ytr, yte in [("글로벌히트", y_g[tr_idx], y_g[te_idx]), ("6대륙도달", y_six[tr_idx], y_six[te_idx])]:
+          for dens, label in [(False, "v2(기존41피처)"), (True, "v2.2(+밀도2피처)")]:
+              Ftr = build(t, tr_idx, dens)
+              Fte = build(t, te_idx, dens)
+              m = lgb.LGBMClassifier(**lgbm_params()).fit(Ftr.to_numpy().astype(float), ytr)
+              p = m.predict_proba(Fte.to_numpy().astype(float))[:, 1]
+              yp = (p >= 0.5).astype(int)
+              rows.setdefault("cls", []).append({"스냅샷": f"{t}주차", "모델": label, "target": tname,
+                  "AUC": round(roc_auc_score(yte, p), 3),
+                  "정확도": round(accuracy_score(yte, yp), 3),
+                  "정밀도": round(precision_score(yte, yp, zero_division=0), 3),
+                  "재현율": round(recall_score(yte, yp, zero_division=0), 3),
+                  "F1": round(f1_score(yte, yp, zero_division=0), 3),
+                  "MSE(Brier)": round(((p - yte)**2).mean(), 4)})
+              if t == 4:
+                  models[f"{tname}_{'v22' if dens else 'v2'}"] = m
+  
+  # 회귀 (4주차)
+  Ftr_b = build(4, tr_idx, False); Fte_b = build(4, te_idx, False)
+  Ftr_d = build(4, tr_idx, True); Fte_d = build(4, te_idx, True)
+  y_r_tr, y_r_te = y_r[tr_idx], y_r[te_idx]
+  for label, Ftr, Fte in [("v2(기존41피처)", Ftr_b, Fte_b), ("v2.2(+밀도2피처)", Ftr_d, Fte_d)]:
+      gm = lgb.LGBMRegressor(n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+                             subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      gm.fit(Ftr.to_numpy().astype(float), y_r_tr)
+      pr = np.clip(gm.predict(Fte.to_numpy().astype(float)), 0, 94)
+      models[f"회귀_{'v22' if '+밀도' in label else 'v2'}"] = gm
+      rows.setdefault("reg", []).append({"모델": label,
+          "MAE": round(mean_absolute_error(y_r_te, pr), 2),
+          "RMSE": round(float(np.sqrt(((pr - y_r_te)**2).mean())), 2),
+          "R2": round(r2_score(y_r_te, pr), 3)})
+  
+  cres, rres = pd.DataFrame(rows["cls"]), pd.DataFrame(rows["reg"])
+  print("\n=== 분류 비교 ===")
+  print(cres.to_string(index=False))
+  print("\n=== 회귀 비교 (4주차) ===")
+  print(rres.to_string(index=False))
+  cres.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\model_v22_density_results.csv", index=False, encoding="utf-8-sig")
+  rres.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\model_v22_density_reg.csv", index=False, encoding="utf-8-sig")
+  
+  # SHAP 갱신 (4주차 글로벌히트 v2.2)
+  import shap
+  expl = shap.TreeExplainer(models["글로벌히트_v22"])
+  sv = expl.shap_values(Fte_d.to_numpy().astype(float), check_additivity=False)
+  sv = sv[1] if isinstance(sv, list) else sv
+  if sv.ndim == 3:
+      sv = sv[:, :, 1]
+  plt.figure(figsize=(9, 7))
+  shap.summary_plot(sv, Fte_d.to_numpy().astype(float), feature_names=list(Fte_d.columns), show=False, max_display=15)
+  plt.title("LightGBM v2.2 SHAP 요약 (밀도 피처 포함)")
+  plt.tight_layout()
+  plt.savefig(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\figures\14_shap_v22.png", dpi=130, bbox_inches="tight")
+  plt.show()
+  imp = np.abs(sv).mean(axis=0)
+  top = pd.Series(imp, index=Fte_d.columns).sort_values(ascending=False).head(14)
+  print("\nSHAP 중요도 TOP 14 (v2.2):")
+  for k, v in top.items():
+      print(f"  {k:28s} {v:.4f}")
+  
+  # v2.2가 승자면 갱신 저장
+  auc22 = cres[(cres.스냅샷 == "4주차") & (cres.모델 == "v2.2(+밀도2피처)") & (cres.target == "글로벌히트")].AUC.iloc[0]
+  auc22_6 = cres[(cres.스냅샷 == "4주차") & (cres.모델 == "v2.2(+밀도2피처)") & (cres.target == "6대륙도달")].AUC.iloc[0]
+  bundle = {"model_name": "model_v2_lgbm", "trained_at": pd.Timestamp.now().isoformat(),
+            "task": "발자국+장르+언어권+시장파워+시장밀도 -> 확산 예측",
+            "feature_names": list(Fte_d.columns), "models": {
+                "4주차_글로벌히트_lgbm": models["글로벌히트_v22"],
+                "4주차_6대륙도달_lgbm": models["6대륙도달_v22"],
+                "1주차_글로벌히트_lgbm": models.get("1주차_글로벌히트_lgbm_v22") or build(1, tr_idx, True),
+                "1주차_6대륙도달_lgbm": None,
+            }, "results": cres.to_dict(orient="records")}
+  # 1주차 v22 모델 재학습 저장
+  for tname, ytr in [("글로벌히트", y_g[tr_idx]), ("6대륙도달", y_six[tr_idx])]:
+      F1_tr = build(1, tr_idx, True)
+      bundle["models"][f"1주차_{tname}_lgbm"] = lgb.LGBMClassifier(**lgbm_params()).fit(
+          F1_tr.to_numpy().astype(float), ytr)
+  bundle["models"].pop("1주차_글로벌히트_lgbm", None) if bundle["models"]["1주차_글로벌히트_lgbm"] is None else None
+  bundle["models"] = {k: v for k, v in bundle["models"].items() if v is not None}
+  bundle["models"]["회귀_국가수_4주차"] = models["회귀_v22"]
+  joblib.dump(bundle, r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\models\model_v2_lgbm.joblib")
+  print("\n모델 저장 갱신: models/model_v2_lgbm.joblib (v2.2 밀도 피처 버전)")
+
+  ── [설명] ──
+  ### 4단계 — 35주 시간 분할 재검증(학습 2021-07~2026-03 → 테스트 신작 1,443편)
+
+  ── [설명] ──
+  **원본 코드** — `학습 스크립트(35주 재검증)`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """35주 시간 분할 재학습 + 전체 갱신 + Streamlit 반영
+  학습: 2021-07-04 ~ 2026-03-14 완결 작품
+  테스트: 2026-03-15 ~ 2026-11-15 신작 1,443편"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import lightgbm as lgb
+  import shap
+  from sklearn.linear_model import LogisticRegression, Ridge
+  from sklearn.calibration import CalibratedClassifierCV
+  from sklearn.metrics import (roc_auc_score, accuracy_score, precision_score, recall_score,
+                               f1_score, mean_absolute_error, r2_score, brier_score_loss)
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  PWR = (pow_df.나라파워셰어 * 1000).to_dict()
+  DENS = {y: pow_df[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  pop_long = pop.melt(id_vars=["country_name"], value_vars=[str(y) for y in range(2021, 2027)],
+                      var_name="yr", value_name="row_pop")
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  old_g = pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"])
+  new_g = pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  comb_g = pd.concat([old_g, new_g], ignore_index=True)
+  comb["대륙"] = comb.country_name.map(CONT)
+  comb["is_en"] = comb.country_name.map(lambda c: c in EN_MARKETS)
+  g_set = set(comb_g.show_title.unique())
+  
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2026-03-14")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[(f_ > CUT) & (f_ <= pd.Timestamp("2026-11-15"))].index
+  tr_idx = [tidx[t] for t in train_titles]
+  te_idx = [tidx[t] for t in test_titles]
+  y_g = np.array([t in g_set for t in titles], dtype=int)
+  six_map = comb.groupby("show_title").대륙.nunique()
+  y_six = np.array([six_map.get(t, 0) == 6 for t in titles], dtype=int)
+  y_r = comb.groupby("show_title").country_name.nunique().reindex(titles).to_numpy().astype(float)
+  y_g_tr, y_g_te = y_g[tr_idx], y_g[te_idx]
+  y_s_tr, y_s_te = y_six[tr_idx], y_six[te_idx]
+  y_r_tr, y_r_te = y_r[tr_idx], y_r[te_idx]
+  print(f"학습 {len(train_titles):,}편 | 테스트 {len(test_titles):,}편 | 테스트 히트율 {y_g_te.mean()*100:.1f}%", flush=True)
+  
+  def build(t, sel_idx, dens=True):
+      sel = [titles[i] for i in sel_idx]
+      sub = comb[(comb.offset_wk < t) & (comb.show_title.isin(set(sel)))]
+      g = sub.groupby("show_title")
+      f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+      f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+      dw = sub[sub.offset_wk == 0]
+      dwg = dw.groupby("show_title")
+      f["데뷔영어권"] = dwg.is_en.max().reindex(f.index).fillna(0).astype(int)
+      f["진입시장파워"] = dw.country_name.map(PWR).groupby(dw["show_title"]).sum().reindex(f.index).fillna(0)
+      sub2 = sub.copy()
+      sub2["yr"] = sub2.first_week.dt.year.clip(2021, 2026).astype(str)
+      sub2 = sub2.merge(pop_long, on=["country_name", "yr"], how="left")
+      f["진입시장인구_log"] = np.log1p(sub2.groupby("show_title").row_pop.sum().reindex(f.index).fillna(0))
+      for tag in TAGS:
+          f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+      f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+      if dens:
+          dr = {}
+          for t_ in f.index:
+              cs = sub[sub.show_title == t_].country_name.unique()
+              dy = min(max(int(first[t_].year), 2021), 2026)
+              s_ = sum(DENS[dy].get(c, 0) or 0 for c in cs)
+              dr[t_] = (s_, s_ / max(len(cs), 1))
+          f["진입시장밀도합"] = pd.Series({t_: v[0] for t_, v in dr.items()}).reindex(f.index)
+          f["진입시장밀도평균"] = pd.Series({t_: v[1] for t_, v in dr.items()}).reindex(f.index)
+      return f
+  
+  def lgbm_params(clf=True):
+      p = dict(n_estimators=500, learning_rate=0.05, num_leaves=31, min_child_samples=30,
+               subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42, verbose=-1)
+      if clf:
+          p["is_unbalance"] = True
+      return p
+  
+  models_new = {}
+  res_rows = []
+  for t in [4, 1]:
+      Ftr = build(t, tr_idx, True).to_numpy().astype(float)
+      Fte = build(t, te_idx, True).to_numpy().astype(float)
+      for tname, ytr, yte in [("글로벌히트", y_g_tr, y_g_te), ("6대륙도달", y_s_tr, y_s_te)]:
+          m = lgb.LGBMClassifier(**lgbm_params()).fit(Ftr, ytr)
+          cal = CalibratedClassifierCV(m, method="isotonic", cv=5).fit(Ftr, ytr)
+          p = cal.predict_proba(Fte)[:, 1]
+          yp = (p >= 0.5).astype(int)
+          res_rows.append({"스냅샷": f"{t}주차", "모델": "LightGBM v2.2(보정)", "target": tname,
+                           "AUC": round(roc_auc_score(yte, p), 3),
+                           "정확도": round(accuracy_score(yte, yp), 3),
+                           "정밀도": round(precision_score(yte, yp, zero_division=0), 3),
+                           "재현율": round(recall_score(yte, yp, zero_division=0), 3),
+                           "F1": round(f1_score(yte, yp, zero_division=0), 3),
+                           "MSE(Brier)": round(((p - yte)**2).mean(), 4)})
+          models_new[f"{t}_{tname}_lgbm"] = m
+          models_new[f"{t}_{tname}_cal"] = cal
+      rg = Ridge(alpha=1.0).fit(Ftr, y_r_tr)
+      pr = np.clip(rg.predict(Fte), 0, 94)
+      res_rows.append({"스냅샷": f"{t}주차", "모델": "릿지회귀", "target": "국가수",
+                       "AUC": np.nan, "정확도": np.nan, "정밀도": np.nan, "재현율": np.nan, "F1": np.nan,
+                       "MSE(Brier)": np.nan})
+      models_new[f"{t}_회귀"] = rg
+  
+  res_df = pd.DataFrame(res_rows)
+  print("\n=== 35주 시간 분할 성능 ===")
+  print(res_df[res_df.target != "국가수"].to_string(index=False))
+  for t in [4, 1]:
+      Fte = build(t, te_idx, True).to_numpy().astype(float)
+      rg = models_new[f"{t}_회귀"]
+      pr = np.clip(rg.predict(Fte), 0, 94)
+      print(f"  {t}주차 회귀: MAE {mean_absolute_error(y_r_te, pr):.2f}개국 | R2 {r2_score(y_r_te, pr):.3f}")
+  
+  res_df.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\model_35week_results.csv", index=False, encoding="utf-8-sig")
+  
+  # SHAP 갱신 (4주차 글로벌히트)
+  import shap
+  Fte_shap = build(4, te_idx, True)
+  model_best = models_new["4_글로벌히트_lgbm"]
+  expl = shap.TreeExplainer(model_best)
+  sv = expl.shap_values(Fte_shap.to_numpy().astype(float), check_additivity=False)
+  sv = sv[1] if isinstance(sv, list) else sv
+  if sv.ndim == 3:
+      sv = sv[:, :, 1]
+  fig = plt.figure(figsize=(9, 7))
+  shap.summary_plot(sv, Fte_shap.to_numpy().astype(float), feature_names=list(Fte_shap.columns),
+                    show=False, max_display=15)
+  plt.gcf().suptitle("LightGBM v2.2 SHAP 요약 (35주 시간 분할 테스트)", y=1.02, fontsize=12)
+  plt.tight_layout()
+  plt.savefig(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\figures\15_shap_35week.png", dpi=130, bbox_inches="tight")
+  plt.show()
+  print("\nSHAP 저장: 15_shap_35week.png")
+  
+  # 모델 번들 저장
+  bundle = {"model_name": "model_v2_lgbm", "trained_at": pd.Timestamp.now().isoformat(),
+            "task": "발자국+장르+언어권+시장파워+밀도 -> 확산 예측 (35주 시간 분할)",
+            "training_window": "2021-07-04 ~ 2026-03-14 (완결 작품)",
+            "test_window": "2026-03-15 ~ 2026-11-15 (신작 1,443편)",
+            "feature_names": list(Fte_shap.columns),
+            "models": {f"{k.replace('_', '주차_', 1) if k.startswith(('4_', '1_')) else k}_"
+                       f"{'lgbm' if '_lgbm' not in k and '_cal' not in k and '_회귀' not in k else ('calibrated' if '_cal' in k else ('lgbm' if '_lgbm' in k else 'ridge'))}":
+                       v for k, v in models_new.items()},
+            "results": res_df.to_dict(orient="records")}
+  bundle["models"] = {}
+  for t in [4, 1]:
+      for tname in ["글로벌히트", "6대륙도달"]:
+          bundle["models"][f"{t}주차_{tname}_lgbm"] = models_new[f"{t}_{tname}_lgbm"]
+          bundle["models"][f"{t}주차_{tname}_lgbm_calibrated"] = models_new[f"{t}_{tname}_cal"]
+      bundle["models"][f"{t}주차_회귀"] = models_new[f"{t}_회귀"]
+  joblib.dump(bundle, r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\models\model_v2_lgbm.joblib")
+  print("모델 저장 갱신: models/model_v2_lgbm.joblib")
+
+  ── [설명] ──
+  ### 실행 결과 해설 — 보고서 수치와의 관계
+  
+  - 이 노트북은 4단계 학습을 **처음부터 재실행**한 결과다. LightGBM은 멀티스레드 학습 시 실행마다
+    미세하게 달라지므로(시드 고정에도 불구), 재실행 수치는 보고서와 **±0.003 수준에서 소폭 다르다**
+    (예: 발전 과정표 v2 0.936 → 재실행 0.933).
+  - **보고서의 정확한 수치(AUC 0.951 등)의 결정적 재현은 07번 노트북 마지막 셀**(학습된 번들을
+    그대로 사용한 예측 재현 — raw 56.9% → 보정 27.3% "재현 판정: 성공")과
+    `models/model_v2_lgbm.joblib` 번들에 저장된 results(AUC 0.951·정밀도 0.869)로 확인한다.
+  - 학습·평가 방법(피처 구성, 35주 시간 분할, 기준선 비교)은 이 노트북 코드가 그대로 근거다.
+
+
+
+======================================================================
+  📓 07_확률보정과_SHAP
+  (확률 보정(Isotonic)과 SHAP 기여 분해)
+======================================================================
+
+  ── [설명] ──
+  # 확률 보정(Isotonic)과 SHAP 기여 분해
+  
+  **용도** — LightGBM 원시 확률의 과대평가를 Isotonic 보정으로 교정하고(한·일·대만 1주차 56.9%→27.3%), 보정 전후 Brier 개선을 검증하며, 시뮬레이터 조건별 확률과 SHAP 피처 기여 그림을 산출한다.
+  
+  **보고서 대응** — 보고서 02장 'Isotonic 확률 보정' 문단 · 평가 지표 박스 · SHAP 기여 분해(그림 5) + 읽는 법 박스
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `확률 보정 스크립트`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """모든 확산 예측 모델 보정(CalibratedClassifierCV) + 번들 갱신 + 검증 곡선 데이터 산출
+  - 대상: model_v2_lgbm.joblib 내 분류 모델 4종(1주/4주 x 글로벌/6대륙)
+  - 방법: Isotonic, 학습 데이터(2023까지 완결 작품)에서 5-fold 교차 보정
+  - 산출: calibration 곡선용 DataFrame(모델별 예측확률 bin별 실제 히트율) + 보정 모델 저장"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+  
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  PWR = (pow_df.나라파워셰어 * 1000).to_dict()
+  DENS = {y: pow_df[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  pop_long = pop.melt(id_vars=["country_name"], value_vars=[str(y) for y in range(2021, 2027)],
+                      var_name="yr", value_name="row_pop")
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  old_g = pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"])
+  new_g = pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  comb_g = pd.concat([old_g, new_g], ignore_index=True)
+  comb["대륙"] = comb.country_name.map(CONT)
+  comb["is_en"] = comb.country_name.map(lambda c: c in EN_MARKETS)
+  g_set = set(comb_g.show_title.unique())
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2023-12-31")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[f_ >= pd.Timestamp("2024-01-07")].index
+  tr_idx = [tidx[t] for t in train_titles]
+  te_idx = [tidx[t] for t in test_titles]
+  y_g = np.array([t in g_set for t in titles], dtype=int)
+  six_map = comb.groupby("show_title").대륙.nunique()
+  y_six = np.array([six_map.get(t, 0) == 6 for t in titles], dtype=int)
+  
+  def build(t, sel_idx, dens=True):
+      sel = [titles[i] for i in sel_idx]
+      sub = comb[(comb.offset_wk < t) & (comb.show_title.isin(set(sel)))]
+      g = sub.groupby("show_title")
+      f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+      f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+      f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+      pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+            .reindex(columns=ORDER).fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+      pv.columns = [f"{k}국가수" for k in ORDER]
+      f = f.join(pv)
+      for k in ORDER:
+          f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+      f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+      dw = sub[sub.offset_wk == 0]
+      dwg = dw.groupby("show_title")
+      f["데뷔영어권"] = dwg.is_en.max().reindex(f.index).fillna(0).astype(int)
+      f["진입시장파워"] = dw.country_name.map(PWR).groupby(dw["show_title"]).sum().reindex(f.index).fillna(0)
+      sub2 = sub.copy()
+      sub2["yr"] = sub2.first_week.dt.year.clip(2021, 2026).astype(str)
+      sub2 = sub2.merge(pop_long, on=["country_name", "yr"], how="left")
+      f["진입시장인구_log"] = np.log1p(sub2.groupby("show_title").row_pop.sum().reindex(f.index).fillna(0))
+      for tag in TAGS:
+          f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+      f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+      if dens:
+          dens_rows = {}
+          for t_ in f.index:
+              cs = sub[sub.show_title == t_].country_name.unique()
+              dy = min(max(int(first[t_].year), 2021), 2026)
+              s_ = sum(DENS[dy].get(c, 0) or 0 for c in cs)
+              dens_rows[t_] = (s_, s_ / max(len(cs), 1))
+          f["진입시장밀도합"] = pd.Series({t_: v[0] for t_, v in dens_rows.items()}).reindex(f.index)
+          f["진입시장밀도평균"] = pd.Series({t_: v[1] for t_, v in dens_rows.items()}).reindex(f.index)
+      return f
+  
+  F_tr4 = build(4, tr_idx, True).to_numpy().astype(float)
+  F_te4 = build(4, te_idx, True).to_numpy().astype(float)
+  F_tr1 = build(1, tr_idx, True).to_numpy().astype(float)
+  F_te1 = build(1, te_idx, True).to_numpy().astype(float)
+  y_g_tr, y_g_te = y_g[tr_idx], y_g[te_idx]
+  y_s_tr, y_s_te = y_six[tr_idx], y_six[te_idx]
+  
+  bundle = joblib.load(D + r"\models\model_v2_lgbm.joblib")
+  
+  # 보정 모델 학습 (학습 데이터에서 5-fold 교차 보정 — Isotonic)
+  cal_models = {}
+  cal_rows = []
+  for key, (Ftr, Fte, ytr, yte) in {
+      "4주차_글로벌히트_lgbm": (F_tr4, F_te4, y_g_tr, y_g_te),
+      "4주차_6대륙도달_lgbm": (F_tr4, F_te4, y_s_tr, y_s_te),
+      "1주차_글로벌히트_lgbm": (F_tr1, F_te1, y_g_tr, y_g_te),
+      "1주차_6대륙도달_lgbm": (F_tr1, F_te1, y_s_tr, y_s_te),
+  }.items():
+      base = bundle["models"][key]
+      cal = CalibratedClassifierCV(base, method="isotonic", cv=5)
+      cal.fit(Ftr, ytr)
+      p_raw = base.predict_proba(Fte)[:, 1]
+      p_cal = cal.predict_proba(Fte)[:, 1]
+      cal_models[key] = cal
+      # Brier 개선 확인
+      b_raw = ((p_raw - yte)**2).mean()
+      b_cal = ((p_cal - yte)**2).mean()
+      cal_rows.append({"모델": key, "Brier(보정전)": round(b_raw, 4), "Brier(보정후)": round(b_cal, 4),
+                       "개선": round(b_raw - b_cal, 4)})
+      print(f"[{key}] Brier {b_raw:.4f} -> {b_cal:.4f}", flush=True)
+  
+  # 보정 곡선 데이터 (4주차 글로벌히트 기준, 8 bins)
+  frac_pos_raw, mean_pred_raw = calibration_curve(y_g_te, bundle["models"]["4주차_글로벌히트_lgbm"].predict_proba(F_te4)[:, 1], n_bins=8, strategy="quantile")
+  frac_pos_cal, mean_pred_cal = calibration_curve(y_g_te, cal_models["4주차_글로벌히트_lgbm"].predict_proba(F_te4)[:, 1], n_bins=8, strategy="quantile")
+  cal_curve_df = pd.DataFrame({
+      "예측확률(bin중심, 보정전)": (mean_pred_raw * 100).round(1),
+      "실제히트율(보정전)": (frac_pos_raw * 100).round(1),
+      "예측확률(bin중심, 보정후)": (mean_pred_cal * 100).round(1),
+      "실제히트율(보정후)": (frac_pos_cal * 100).round(1),
+  })
+  cal_curve_df.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\calibration_curve_4wk_global.csv", index=False, encoding="utf-8-sig")
+  cal_res = pd.DataFrame(cal_rows)
+  cal_res.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\calibration_results.csv", index=False, encoding="utf-8-sig")
+  print("\n=== Brier 요약 ===")
+  print(cal_res.to_string(index=False))
+  
+  # 번들 갱신: 보정 모델 포함
+  bundle["models"].update({f"{k}_calibrated": v for k, v in cal_models.items()})
+  bundle["calibrated"] = True
+  bundle["calibration_note"] = "분류 모델 4종 Isotonic 보정 적용 (학습 데이터 5-fold 교차). 시뮬레이터는 보정 모델 사용."
+  joblib.dump(bundle, r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\models\model_v2_lgbm.joblib")
+  print("번들 갱신: models/model_v2_lgbm.joblib (보정 모델 포함)")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/11_calibration_check.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 11. 모델 번들 검증 — 학습 메타데이터·피처·raw vs Isotonic 보정 예측 비교
+  #        보고서 "Isotonic 확률 보정" 섹션의 근거 (보정 전 56.9% → 보정 후 27.3%)
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4,
+  #        scikit-learn 1.9.1, lightgbm 4.7.0, joblib 1.6.0 — requirements.txt 참고
+  #        실행: python scripts/11_calibration_check.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import joblib
+  import pandas as pd
+  import numpy as np
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  bundle = joblib.load(ROOT / "models/model_v2_lgbm.joblib")
+  print("모델명:", bundle["model_name"])
+  print("학습 시점:", bundle["trained_at"])
+  print("학습 구간:", bundle["training_window"])
+  print("테스트 구간:", bundle["test_window"])
+  print("피처 수:", len(bundle["feature_names"]))
+  
+  r = pd.read_csv(ROOT / "data/processed/model_retrain_20261115_results.csv")
+  print("\n== retrain 결과 파일 ==")
+  print(r.to_string(index=False))
+  
+  # 시뮬레이터 기본 조건으로 raw vs 보정 비교
+  power = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  pop_y = pd.read_csv(ROOT / "references/country_population_by_year.csv")
+  CONT = dict(pd.read_csv(ROOT / "references/country_continent.csv").values)
+  POWER_DF = power.set_index("country")
+  PWR = (POWER_DF.나라파워셰어 * 1000).to_dict()
+  DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  PY = pop_y.set_index("country_name")
+  feats = bundle["feature_names"]
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  TAGS = [t[3:] for t in feats if t.startswith("장르_")]
+  
+  row = {name: 0.0 for name in feats}
+  sel = ["South Korea", "Japan", "Taiwan"]
+  row["진입국가수"] = len(sel)
+  row["진입대륙수"] = 1
+  for k in ORDER:
+      row[f"{k}국가수"] = sum(1 for c in sel if CONT[c] == k)
+      row[f"첫진입_{k}"] = int(k == "아시아")
+  row["TV여부"] = 1
+  row["데뷔영어권"] = 1
+  row["진입시장파워"] = sum(PWR.get(c, 0) for c in sel)
+  row["진입시장인구_log"] = np.log1p(sum(PY.loc[c, "2024"] for c in sel))
+  row["진입시장밀도합"] = sum(DENS[2024].get(c, 0) or 0 for c in sel)
+  row["진입시장밀도평균"] = row["진입시장밀도합"] / 3
+  for tag in TAGS:
+      row[f"장르_{tag}"] = int(tag == "Drama")
+  row["장르결측"] = 0
+  Xin = pd.DataFrame([row])[feats].to_numpy().astype(float)
+  
+  for snap in ["1주차", "4주차"]:
+      model = bundle["models"][f"{snap}_글로벌히트_lgbm"]
+      cal_g = bundle["models"].get(f"{snap}_글로벌히트_lgbm_calibrated")
+      raw = model.predict_proba(Xin)[0, 1]
+      p = cal_g.predict_proba(Xin)[0, 1] if cal_g is not None else raw
+      print(f"\n[{snap}] raw={raw*100:.1f}% → 보정={p*100:.1f}%")
+
+  ── [설명] ──
+  **원본 코드** — `scripts/10_simulator_sweep.py`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 10. 시뮬레이터 조건별 확률 검증 — 기본 3개국/미국 단독/대륙 조합 등
+  #        raw vs Isotonic 보정 확률 비교 (보고서 시뮬레이터 표의 수치 출처)
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4,
+  #        scikit-learn 1.9.1, lightgbm 4.7.0, joblib 1.6.0 — requirements.txt 참고
+  #        실행: python scripts/10_simulator_sweep.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import joblib
+  import pandas as pd
+  import numpy as np
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  power = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  pop_y = pd.read_csv(ROOT / "references/country_population_by_year.csv")
+  CONT = dict(pd.read_csv(ROOT / "references/country_continent.csv").values)
+  POWER_DF = power.set_index("country")
+  PWR = (POWER_DF.나라파워셰어 * 1000).to_dict()
+  DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  PY = pop_y.set_index("country_name")
+  
+  bundle = joblib.load(ROOT / "models/model_v2_lgbm.joblib")
+  feats = bundle["feature_names"]
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  TAGS = [t[3:] for t in feats if t.startswith("장르_")]
+  
+  def pred(sel, debut, tv="TV", lang="영어", genres=["Drama"], year=2024, snap="1주차"):
+      row = {name: 0.0 for name in feats}
+      sel = list(dict.fromkeys(sel))
+      row["진입국가수"] = len(sel)
+      conts = {CONT[c] for c in sel}
+      row["진입대륙수"] = len(conts)
+      for k in ORDER:
+          row[f"{k}국가수"] = sum(1 for c in sel if CONT[c] == k)
+      debut_cont = CONT.get(debut)
+      for k in ORDER:
+          row[f"첫진입_{k}"] = int(k == debut_cont)
+      row["TV여부"] = int(tv == "TV")
+      row["데뷔영어권"] = int(lang == "영어")
+      row["진입시장파워"] = sum(PWR.get(c, 0) for c in sel)
+      row["진입시장인구_log"] = np.log1p(sum(PY.loc[c, str(year)] for c in sel))
+      row["진입시장밀도합"] = sum(DENS[year].get(c, 0) or 0 for c in sel)
+      row["진입시장밀도평균"] = row["진입시장밀도합"] / max(len(sel), 1)
+      for tag in TAGS:
+          row[f"장르_{tag}"] = int(tag in genres)
+      row["장르결측"] = int(len(genres) == 0)
+      Xin = pd.DataFrame([row])[feats].to_numpy().astype(float)
+      model = bundle["models"][f"{snap}_글로벌히트_lgbm"]
+      cal_g = bundle["models"].get(f"{snap}_글로벌히트_lgbm_calibrated")
+      raw = model.predict_proba(Xin)[0, 1]
+      p = cal_g.predict_proba(Xin)[0, 1] if cal_g is not None else raw
+      return raw * 100, p * 100
+  
+  CASES = [
+      ("기본 3개국 (한일대만)", ["South Korea", "Japan", "Taiwan"], "South Korea"),
+      ("대륙모드 기본 5개국 (한일대만+홍콩+인도)", ["South Korea", "Japan", "Taiwan", "Hong Kong", "India"], "South Korea"),
+      ("아시아 전체 13개국", ["South Korea", "Japan", "Taiwan", "Hong Kong", "India", "Indonesia", "Malaysia",
+                          "Singapore", "Philippines", "Vietnam", "Thailand", "Pakistan", "Bangladesh"], "South Korea"),
+      ("아시아+남미 전체 23개국", ["South Korea", "Japan", "Taiwan", "Hong Kong", "India", "Indonesia", "Malaysia",
+                            "Singapore", "Philippines", "Vietnam", "Thailand", "Pakistan", "Bangladesh",
+                            "Brazil", "Argentina", "Chile", "Colombia", "Peru", "Ecuador", "Venezuela",
+                            "Bolivia", "Paraguay", "Uruguay"], "South Korea"),
+      ("미국 단독", ["United States"], "United States"),
+      ("영어권 6개국", ["United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"], "United States"),
+      ("미국+한일", ["United States", "South Korea", "Japan"], "United States"),
+  ]
+  
+  for name, sel, debut in CASES:
+      r1, p1 = pred(sel, debut, snap="1주차")
+      r4, p4 = pred(sel, debut, snap="4주차")
+      print(f"{name}: 국가 {len(sel)}개")
+      print(f"   1주차: raw={r1:.1f}% 보정={p1:.1f}% | 4주차: raw={r4:.1f}% 보정={p4:.1f}%")
+
+  ── [설명] ──
+  **원본 코드** — `SHAP 그림 생성 스크립트`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """v2.2 SHAP 그림 재생성 (레이아웃 경고 수정)"""
+  import pandas as pd
+  import numpy as np
+  import joblib
+  import matplotlib
+  pass  # 노트북 실행용 — Agg 비활성
+  import matplotlib.pyplot as plt
+  import shap
+  
+  plt.rcParams["font.family"] = "Malgun Gothic"
+  plt.rcParams["axes.unicode_minus"] = False
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  bundle = joblib.load(D + r"\models\model_v2_lgbm.joblib")
+  model = bundle["models"]["4주차_글로벌히트_lgbm"]
+  feats = bundle["feature_names"]
+  
+  # 테스트 피처 재생성 (밀도 포함)
+  import importlib.util
+  sys_path = r"C:\Users\USER\AppData\Local\Temp\opencode"
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True).drop_duplicates(
+      subset=["country_name", "week", "category", "weekly_rank", "show_title"])
+  cm = pd.read_csv(D + r"\references\country_continent.csv")
+  CONT = dict(zip(cm.country_name, cm.대륙))
+  pow_df = pd.read_csv(D + r"\data\processed\country_market_power.csv").set_index("country")
+  DENS = {y: pow_df[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  first = comb.groupby("show_title").week.min().rename("first_week")
+  last = comb.groupby("show_title").week.max().rename("last_week")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_wk"] = ((comb.week - comb.first_week).dt.days // 7).astype(int)
+  comb["대륙"] = comb.country_name.map(CONT)
+  cat_mode = comb.groupby("show_title").category.agg(lambda s: s.mode()[0])
+  first_cont = comb.sort_values(["show_title", "week", "country_name"]).groupby("show_title").대륙.first()
+  titles = list(comb.show_title.unique())
+  tidx = {t: i for i, t in enumerate(titles)}
+  CUT = pd.Timestamp("2023-12-31")
+  f_, l_ = first, last.reindex(first.index)
+  train_titles = f_[(f_ <= CUT) & (l_ <= CUT)].index
+  test_titles = f_[f_ >= pd.Timestamp("2024-01-07")].index
+  te_idx = [tidx[t] for t in test_titles]
+  cat_meta = pd.read_csv(D + r"\data\interim\netflix_titles_catalog.csv")
+  cat_meta["genres_clean"] = cat_meta.imdb_genres.fillna("").astype(str).str.strip()
+  tag_cnt = cat_meta.genres_clean[cat_meta.genres_clean != ""].str.split(",").explode().str.strip().value_counts()
+  TAGS = [t for t in tag_cnt.index if tag_cnt[t] >= 30][:22]
+  gen_map = {r.show_title: set(t.strip() for t in r.genres_clean.split(",") if t.strip())
+             for _, r in cat_meta.iterrows()}
+  
+  sel = [titles[i] for i in te_idx]
+  sub = comb[(comb.offset_wk < 4) & (comb.show_title.isin(set(sel)))]
+  g = sub.groupby("show_title")
+  f = pd.DataFrame(index=pd.Index(sel, name="show_title"))
+  f["진입국가수"] = g.country_name.nunique().reindex(f.index).fillna(0).astype(int)
+  f["진입대륙수"] = g.대륙.nunique().reindex(f.index).fillna(0).astype(int)
+  pv = (sub.groupby(["show_title", "대륙"]).country_name.nunique().unstack("대륙")
+        .reindex(columns=ORDER if (ORDER := ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]) else ORDER)
+        .fillna(0).astype(int).reindex(f.index).fillna(0).astype(int))
+  pv.columns = [f"{k}국가수" for k in ORDER]
+  f = f.join(pv)
+  for k in ORDER:
+      f[f"첫진입_{k}"] = (first_cont.reindex(f.index) == k).astype(int)
+  f["TV여부"] = (cat_mode.reindex(f.index) == "TV").astype(int)
+  f["데뷔영어권"] = sub[sub.offset_wk == 0].country_name.map(lambda c: c in EN_MARKETS if False else False).groupby(sub[sub.offset_wk == 0].show_title).max().reindex(f.index).fillna(0).astype(int)
+  f["진입시장파워"] = sub.country_name.map((pow_df.나라파워셰어 * 1000).to_dict()).groupby(sub["show_title"]).sum().reindex(f.index).fillna(0)
+  pop = pd.read_csv(D + r"\references\country_population_by_year.csv")
+  sub2 = sub.copy()
+  sub2["yr"] = sub2.first_week.dt.year.clip(2021, 2026).astype(str)
+  sub2 = sub2.merge(pop.melt(id_vars=["country_name"], value_vars=[str(y) for y in range(2021, 2027)],
+                             var_name="yr", value_name="row_pop"), on=["country_name", "yr"], how="left")
+  f["진입시장인구_log"] = np.log1p(sub2.groupby("show_title").row_pop.sum().reindex(f.index).fillna(0))
+  for tag in TAGS:
+      f[f"장르_{tag}"] = [int(tag in gen_map.get(t_, set())) for t_ in f.index]
+  f["장르결측"] = [int(len(gen_map.get(t_, set())) == 0) for t_ in f.index]
+  dens_rows = {}
+  for t_ in f.index:
+      cs = sub[sub.show_title == t_].country_name.unique()
+      dy = min(max(int(first[t_].year), 2021), 2026)
+      s = sum(DENS[dy].get(c, 0) or 0 for c in cs)
+      dens_rows[t_] = (s, s / max(len(cs), 1))
+  f["진입시장밀도합"] = pd.Series({t_: v[0] for t_, v in dens_rows.items()}).reindex(f.index)
+  f["진입시장밀도평균"] = pd.Series({t_: v[1] for t_, v in dens_rows.items()}).reindex(f.index)
+  
+  # 데뷔영어권 재계산 (진단 스크립트 방식)
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  dw = sub[sub.offset_wk == 0].copy()
+  dw["is_en"] = dw.country_name.map(lambda c: c in EN_MARKETS)
+  f["데뷔영어권"] = dw.groupby("show_title").is_en.max().reindex(f.index).fillna(0).astype(int)
+  
+  # 컬럼 순서 맞추기
+  f = f[feats]
+  X = f.to_numpy().astype(float)
+  expl = shap.TreeExplainer(model)
+  sv = expl.shap_values(X, check_additivity=False)
+  sv = sv[1] if isinstance(sv, list) else sv
+  if sv.ndim == 3:
+      sv = sv[:, :, 1]
+  fig = plt.figure(figsize=(9, 7))
+  shap.summary_plot(sv, X, feature_names=feats, show=False, max_display=15)
+  plt.gcf().suptitle("LightGBM v2.2 SHAP 요약 (시장 밀도 피처 포함)", y=1.02, fontsize=12)
+  plt.tight_layout()
+  plt.savefig(D + r"\reports\figures\14_shap_v22.png", dpi=130, bbox_inches="tight")
+  plt.show()
+  print("SHAP 재생성 완료: reports/figures/14_shap_v22.png")
+
+  ── [설명] ──
+  ### 평가 표가 둘인 이유 — 보고서 성능표와의 관계
+  
+  - 이 노트북의 출력에는 두 종류의 평가 표가 나온다.
+  - ① **모델 번들(results) 기준**: 보고서 '최종 모델 성능표'(4주차 글로벌 히트 AUC 0.951·정밀도 0.869)는
+    학습 스크립트가 산출해 번들과 함께 저장한 결정적 평가다. 아래 '모델 번들 재현·검증' 셀에서 그대로 재현된다.
+  - ② **중간 CSV(model_35week_results.csv)의 일부 행**: 임계값 0.5 기준 보정 확률 평가 행이 섞여 있어
+    정확도 0.711 등 다른 숫자가 보인다. 이는 다른 평가 방식의 행이며, 보고서 성능표와 대체 관계가 아니다.
+  - **확률 보정 재실행 주의**: 보정을 이미 끝낸 번들에 다시 보정을 얹으면 이중 보정이 되어 Brier가 나빠진다.
+    이 노트북의 보정 셀은 원본 모델을 건드리지 않고 출력 폴더에만 기록한다.
+
+  ── [설명] ──
+  **원본 코드** — `scripts/17_model_bundle_verify.py` — 모델 사용·평가는 완전 재현 가능 영역(결정적 재현)
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # [용도] 17. 모델 번들 재현·검증 — 학습된 모델의 예측이 저장소 기록과 일치하는지
+  #        결정적으로 재현 (모델 사용·평가는 완전 재현 가능 영역)
+  #
+  # [주의] 원본 학습 코드는 미보존. 재학습 자체는 시드·환경 차이로 결과가 달라질 수
+  #        있으므로, 본 스크립트는 "학습된 번들을 그대로 사용한 예측 재현"을 담당한다.
+  # [환경] Python 3.15.2 (Windows) / pandas 3.1.1, numpy 2.5.4,
+  #        scikit-learn 1.9.1, lightgbm 4.7.0, joblib 1.6.0 — requirements.txt 참고
+  #        실행: python scripts/17_model_bundle_verify.py
+  # [경로] ROOT = 스크립트 위치 기준 프로젝트 루트 (scripts/ 상위)
+  # ─────────────────────────────────────────────────────────────────────────────
+  import joblib
+  import pandas as pd
+  import numpy as np
+  from pathlib import Path
+  
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  
+  # ---- 1) 번load + 메타 확인 ----
+  bundle = joblib.load(ROOT / "models/model_v2_lgbm.joblib")
+  print("== 번들 메타 ==")
+  print("모델명:", bundle["model_name"])
+  print("학습 시점:", bundle["trained_at"])
+  print("학습 구간:", bundle["training_window"])
+  print("테스트 구간:", bundle["test_window"])
+  print("피처 수:", len(bundle["feature_names"]))
+  print("모델 키:", list(bundle["models"].keys()))
+  
+  # ---- 2) 성능 기록 대조 (model_35week_results.csv) ----
+  res = pd.read_csv(ROOT / "data/processed/model_35week_results.csv")
+  print("\n== model_35week_results.csv (시간 분할 성능 기록) ==")
+  print(res.to_string(index=False))
+  
+  # ---- 3) 결정적 예측 재현 — 시뮬레이터 기본 조건 (한국·일본·대만, 1주차) ----
+  # 보고서 기록값: raw 56.9% → 보정 27.3%
+  power = pd.read_csv(ROOT / "data/processed/country_market_power.csv")
+  pop_y = pd.read_csv(ROOT / "references/country_population_by_year.csv")
+  CONT = dict(pd.read_csv(ROOT / "references/country_continent.csv").values)
+  POWER_DF = power.set_index("country")
+  PWR = (POWER_DF.나라파워셰어 * 1000).to_dict()
+  DENS = {y: POWER_DF[f"파워/인구비_{y}"].to_dict() for y in range(2021, 2027)}
+  PY = pop_y.set_index("country_name")
+  feats = bundle["feature_names"]
+  ORDER = ["유럽", "아시아", "북중미", "남미", "아프리카", "오세아니아"]
+  TAGS = [t[3:] for t in feats if t.startswith("장르_")]
+  
+  row = {name: 0.0 for name in feats}
+  sel = ["South Korea", "Japan", "Taiwan"]
+  row["진입국가수"] = len(sel)
+  row["진입대륙수"] = 1
+  for k in ORDER:
+      row[f"{k}국가수"] = sum(1 for c in sel if CONT[c] == k)
+      row[f"첫진입_{k}"] = int(k == "아시아")
+  row["TV여부"] = 1
+  row["데뷔영어권"] = 1
+  row["진입시장파워"] = sum(PWR.get(c, 0) for c in sel)
+  row["진입시장인구_log"] = np.log1p(sum(PY.loc[c, "2024"] for c in sel))
+  row["진입시장밀도합"] = sum(DENS[2024].get(c, 0) or 0 for c in sel)
+  row["진입시장밀도평균"] = row["진입시장밀도합"] / 3
+  for tag in TAGS:
+      row[f"장르_{tag}"] = int(tag == "Drama")
+  row["장르결측"] = 0
+  Xin = pd.DataFrame([row])[feats].to_numpy().astype(float)
+  
+  model = bundle["models"]["1주차_글로벌히트_lgbm"]
+  cal_g = bundle["models"]["1주차_글로벌히트_lgbm_calibrated"]
+  raw = model.predict_proba(Xin)[0, 1]
+  cal = cal_g.predict_proba(Xin)[0, 1]
+  print(f"\n== 결정적 예측 재현 (기본 조건, 1주차) ==")
+  print(f"raw = {raw*100:.1f}% (기록: 56.9%)")
+  print(f"보정 = {cal*100:.1f}% (기록: 27.3%)")
+  ok = abs(raw*100 - 56.9) < 0.5 and abs(cal*100 - 27.3) < 0.5
+  print("재현 판정:", "성공 ✓ — 번들 예측이 기록과 일치" if ok else "불일치 — 번들/데이터 버전 확인 필요")
+
+
+
+======================================================================
+  📓 08_데뷔유형_분석
+  (데뷔 유형 — 영어권 단독 vs 다중 대륙 동시 데뷔)
+======================================================================
+
+  ── [설명] ──
+  # 데뷔 유형 분석 — 영어권 단독 vs 다중 대륙 동시 데뷔
+  
+  **용도** — 첫 주 데뷔 형태(영어권 단독 19.4% vs 다중 대륙 동시 82.0%)가 글로벌 히트율을 갈라놓음을 집계하고, 단독 데뷔 작품의 데뷔 시장 분포를 확인한다.
+  
+  **보고서 대응** — 보고서 핵심 요약(19.4%·82.0%) · 인사이트 1번(동시 공개 기본 설계)
+  
+  **환경** — Python 3.15 / pandas 3.1.1 / scikit-learn 1.9.1 / LightGBM 4.7.0 / SHAP 0.54.1 (requirements.txt)
+  
+  **실행 순서** — 00(개요) → 01(수집·결합) → 02(EDA) → 03(장르 보완) → 04(언어장벽) → 05(시장파워·미러) → 06(LightGBM) → 07(보정·SHAP) → 08(데뷔)
+
+  ── [코드] ──
+  # 공통 설정 — 데이터는 원본 저장소에서 읽고, 출력물은 이 폴더에만 기록(원본 보호)
+  from pathlib import Path
+  import sys
+  ROOT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset")
+  NBOUT = Path(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물")
+  NBOUT_F = NBOUT / "figures"
+  for _d in [NBOUT, NBOUT_F, NBOUT / "models", NBOUT / "data" / "processed", NBOUT / "data" / "interim"]:
+      _d.mkdir(parents=True, exist_ok=True)
+  print("데이터 루트 =", ROOT)
+  print("출력 폴더  =", NBOUT)
+
+  ── [설명] ──
+  **원본 코드** — `데뷔 유형 분석 스크립트`
+
+  ── [코드] ──
+  # -*- coding: utf-8 -*-
+  """SHAP '데뷔영어권' 음수 신호 분해 (컬럼 순서 수정)"""
+  import pandas as pd
+  import numpy as np
+  
+  D = r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\[엔터] Netflix Top 10 Weekly Dataset"
+  EN_MARKETS = {"United States", "United Kingdom", "Canada", "Australia", "Ireland", "New Zealand"}
+  old = pd.read_csv(D + r"\data\raw\all-weeks-countries.csv", encoding="cp1252", parse_dates=["week"])
+  new = pd.read_csv(D + r"\data\processed\all-weeks-countries_2022-2026.csv", parse_dates=["week"])
+  comb = pd.concat([old, new], ignore_index=True)
+  first = comb.groupby("show_title").week.min().rename("debut")
+  comb = comb.merge(first, on="show_title")
+  comb["offset_days"] = (comb.week - comb.debut).dt.days
+  comb["is_en_debut"] = comb.country_name.map(lambda c: c in EN_MARKETS)
+  debut_week = comb[comb.offset_days < 7]
+  g_set = set(pd.concat([pd.read_csv(D + r"\data\raw\all-weeks-global.csv", parse_dates=["week"]),
+                         pd.read_csv(D + r"\data\processed\all-weeks-global_2022-2026.csv", parse_dates=["week"])],
+                        ignore_index=True).show_title.unique())
+  
+  deb = debut_week.groupby("show_title").agg(
+      진입국가수=("country_name", "nunique"),
+      영어권포함=("is_en_debut", "max"),
+      비영어포함=("country_name", lambda s: int(any(c not in EN_MARKETS for c in s))))
+  deb["유형"] = np.where(deb.영어권포함 & deb.비영어포함, "다중(영어+비영어)",
+                np.where(deb.영어권포함, "영어권 전용 데뷔", "비영어권 전용 데뷔"))
+  deb["글로벌히트"] = [1 if t in g_set else 0 for t in deb.index]
+  deb["카테고리"] = comb.groupby("show_title").category.agg(lambda s: s.mode()[0]).reindex(deb.index)
+  
+  print("=== 데뷔 유형별 글로벌 히트율 (SHAP '데뷔영어권' 음수 신호 분해) ===")
+  t = deb.groupby("유형").agg(작품수=("글로벌히트", "count"), 글로벌히트율=("글로벌히트", "mean")).round(3)
+  print(t.to_string())
+  print()
+  print("=== 세부: 유형 x 넷플릭스 카테고리 ===")
+  t2 = deb.groupby(["유형", "카테고리"]).agg(작품수=("글로벌히트", "count"),
+                                       글로벌히트율=("글로벌히트", "mean")).round(3)
+  print(t2.to_string())
+  deb.to_csv(r"C:\Users\USER\Desktop\엘리스 개인 프로젝트 자료\넷플릭스_분석_노트북\출력물" + r"\data\processed\debut_type_analysis.csv", index=False, encoding="utf-8-sig")
+  print("\n저장: data/processed/debut_type_analysis.csv")
+
